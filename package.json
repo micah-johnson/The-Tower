@@ -1,0 +1,26 @@
+{
+  "name": "the-tower",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "rbxtsc",
+    "watch": "rbxtsc -w",
+    "serve": "rojo serve",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@rbxts/compiler-types": "^3.0.0-types.0",
+    "@rbxts/types": "^1.0.883",
+    "roblox-ts": "^3.0.0",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@rbxts/react": "^17.2.3",
+    "@rbxts/react-roblox": "^17.2.3",
+    "@rbxts/services": "^1.5.5"
+  }
+}

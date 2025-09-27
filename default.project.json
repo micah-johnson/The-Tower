@@ -1,0 +1,41 @@
+{
+	"name": "the-tower",
+	"tree": {
+		"$className": "DataModel",
+
+		"ReplicatedStorage": {
+			"rbxts_include": {
+				"$path": "include",
+				"node_modules": {
+					"$className": "Folder",
+					"@rbxts": {
+						"$path": "node_modules/@rbxts"
+					}
+				}
+			},
+			"Shared": {
+				"$path": "out/shared"
+			}
+		},
+
+		"ServerScriptService": {
+			"Server": {
+				"$path": "out/server"
+			}
+		},
+
+		"StarterPlayer": {
+			"StarterPlayerScripts": {
+				"Client": {
+					"$path": "out/client"
+				}
+			}
+		},
+
+		"Workspace": {
+			"$properties": {
+				"FilteringEnabled": true
+			}
+		}
+	}
+}
