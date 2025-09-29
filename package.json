@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "rbxtsc",
-    "watch": "rbxtsc -w",
+    "watch": "rbxtsc -w --verbose",
+    "dev": "rbxtsc -w --verbose",
     "serve": "rojo serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -19,8 +20,10 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@rbxts/profile-store": "^1.0.3",
     "@rbxts/react": "^17.2.3",
     "@rbxts/react-roblox": "^17.2.3",
-    "@rbxts/services": "^1.5.5"
+    "@rbxts/services": "^1.5.5",
+    "@rbxts/t": "^3.2.1"
   }
 }
