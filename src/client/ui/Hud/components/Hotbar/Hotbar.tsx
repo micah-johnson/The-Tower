@@ -9,7 +9,8 @@ import { RARITY_COLORS } from "../../../../../shared/consts/colors";
 import { MoveItemPacket, MoveItemResponse, PacketClass, PacketDirection, PayloadOf, ResponseOf } from "../../../../../shared/network";
 import { ClientNet } from "../../../../network";
 import { ItemInstance } from "../../../../../shared/items";
-import { ItemViewport } from "../../../Inventory/components/ItemViewport";
+import { ItemViewport } from "../../../components/ItemViewport";
+import { useTweenableState } from "../../../../hooks/tween";
 
 interface DragState {
     originSlot: string;
@@ -19,9 +20,10 @@ interface DragState {
 const slotNums = [1,2,3,4,5,6,7,8,9,0]
 
 export function Hotbar() {
-    const [selected, setSelected] = useState<number>(1);
+    const [selected, setSelected] = useState<number>(-1);
     const [dragState, setDragState] = useState<DragState | undefined>();
     const [dragPosition, setDragPosition] = useState(new Vector2(0, 0));
+
     const slotRefs = useRef(new Map<string, Frame>());
     const hotbarRef = useRef<Frame>();
     const dragStateRef = useRef<DragState | undefined>();
@@ -34,6 +36,14 @@ export function Hotbar() {
         const [inset] = GuiService.GetGuiInset();
         return new Vector2(position.X - inset.X, position.Y - inset.Y);
     }, []);
+
+    useEffect(() => {
+        if (selected ===  -1) {
+            inventoryManager.equipSlot(undefined)
+        } else {
+            inventoryManager.equipSlot(`hotbar_${selected}`)
+        }
+    }, [selected])
 
     const requestMove = useCallback((slot: string, itemUuid: string) => {
         const payload = {
@@ -81,11 +91,9 @@ export function Hotbar() {
             }
         }
 
-        print(`[Hotbar] pointer (${position.X}, ${position.Y}) not over any slot`);
         for (const [slotId, frame] of slotRefs.current) {
             const pos = frame.AbsolutePosition;
             const size = frame.AbsoluteSize;
-            print(`  slot ${slotId}: pos=(${pos.X}, ${pos.Y}) size=(${size.X}, ${size.Y})`);
         }
         return undefined;
     }, []);
@@ -123,10 +131,6 @@ export function Hotbar() {
             print(`[Hotbar] moving ${draggedItem.id} to ${targetSlot}`);
             requestMove(targetSlot, state.itemUuid);
         });
-
-        const digits = string.match(targetSlot, "hotbar_(%d+)");
-        const slotNumber = digits !== undefined ? tonumber(digits) ?? selected : selected;
-        setSelected(slotNumber);
     }, [adjustForInset, findSlotUnderPoint, requestMove, selected]);
 
     useEffect(() => {
@@ -164,7 +168,7 @@ export function Hotbar() {
     }, []);
 
     const handleSlotSelected = useCallback((slotNum: number) => {
-        setSelected(slotNum);
+        setSelected(prev => prev === slotNum ? -1 : slotNum)
     }, []);
 
     const startDrag = useCallback((slotId: string, item: ItemInstance, pointerPosition: Vector2, frame: Frame) => {
@@ -204,55 +208,6 @@ export function Hotbar() {
             dragOverlay.Destroy();
         }
     }, [dragOverlay]);
-
-    const renderDragGhost = () => {
-        const state = dragState;
-        if (!state) {
-            return undefined;
-        }
-
-        const item = inventoryManager.getItem(state.itemUuid);
-        if (!item) {
-            return undefined;
-        }
-
-        const itemDef = itemRepository.get(item.id);
-        const color = itemDef ? RARITY_COLORS[itemDef.rarity] : Color3.fromHex("#f5f5f5");
-        const screenPosition = new Vector2(dragPosition.X - 25, dragPosition.Y + 25);
-
-        return (
-            <frame
-                key="DragGhost"
-                Size={UDim2.fromOffset(50, 50)}
-                Position={UDim2.fromOffset(screenPosition.X, screenPosition.Y)}
-                BackgroundColor3={color}
-                BackgroundTransparency={0.4}
-                BorderSizePixel={0}
-                ZIndex={10}
-                Active={false}
-            >
-                <uistroke Color={color} Transparency={0.1} />
-                <uicorner CornerRadius={new UDim(0, 3)} />
-                <ItemViewport item={item} />
-                {item.stack > 1 && (
-                    <textlabel
-                        BackgroundTransparency={1}
-                        Size={UDim2.fromOffset(18, 14)}
-                        AnchorPoint={new Vector2(1, 1)}
-                        Position={UDim2.fromOffset(48, 48)}
-                        FontFace={Font.fromName("Balthazar")}
-                        Text={`${item.stack}`}
-                        TextColor3={color}
-                        TextXAlignment={Enum.TextXAlignment.Right}
-                        TextYAlignment={Enum.TextYAlignment.Bottom}
-                        ZIndex={11}
-                    />
-                )}
-            </frame>
-        );
-    };
-
-    const ghost = renderDragGhost();
 
     return (
         <>
@@ -295,7 +250,68 @@ export function Hotbar() {
                 </frame>
             </frame>
 
-            {ghost && createPortal(ghost, dragOverlay)}
+            <DragGhost dragPosition={dragPosition} dragState={dragState} />
         </>
     )
 }
+
+export function DragGhost(props: { dragState?: DragState, dragPosition: Vector2 }){
+        const ref = useRef<Frame>()
+        const strokeRef = useRef<UIStroke>()
+
+        const [color, setColor] = useState(Color3.fromHex("#f5f5f5"))
+        const [transparency, setTransparency] = useTweenableState(ref, "Transparency", 1, new TweenInfo(0.1, Enum.EasingStyle.Linear))
+        const [strokeTransparency, setStrokeTransparency] = useTweenableState(strokeRef, "Transparency", 1, new TweenInfo(0.1, Enum.EasingStyle.Linear))
+
+        useEffect(() => {
+            if (!props.dragState || !inventoryManager.getItem(props.dragState.itemUuid)) {
+                setTransparency(1)
+                setStrokeTransparency(1)
+            } else {
+                const itemDef = item ? itemRepository.get(item.id) : undefined;
+                const color = itemDef ? RARITY_COLORS[itemDef.rarity] : Color3.fromHex("#f5f5f5");
+
+                setColor(color)
+
+                setTransparency(0.4)
+                setStrokeTransparency(0.1)
+            }
+        }, [props.dragState])
+
+        const item = props.dragState ? inventoryManager.getItem(props.dragState.itemUuid) : undefined
+
+        const screenPosition = new Vector2(props.dragPosition.X - 25, props.dragPosition.Y + 25);
+
+        return (
+            <frame
+                ref={ref}
+                key="DragGhost"
+                Size={UDim2.fromOffset(50, 50)}
+                Position={UDim2.fromOffset(screenPosition.X, screenPosition.Y)}
+                BackgroundColor3={color}
+                BackgroundTransparency={0.4}
+                Transparency={transparency}
+                BorderSizePixel={0}
+                ZIndex={10}
+                Active={false}
+            >
+                <uistroke ref={strokeRef} Color={color} Transparency={strokeTransparency} />
+                <uicorner CornerRadius={new UDim(0, 3)} />
+                <ItemViewport item={item} />
+                {item && item.stack > 1 && (
+                    <textlabel
+                        BackgroundTransparency={1}
+                        Size={UDim2.fromOffset(18, 14)}
+                        AnchorPoint={new Vector2(1, 1)}
+                        Position={UDim2.fromOffset(48, 48)}
+                        FontFace={Font.fromName("Balthazar")}
+                        Text={`${item.stack}`}
+                        TextColor3={color}
+                        TextXAlignment={Enum.TextXAlignment.Right}
+                        TextYAlignment={Enum.TextYAlignment.Bottom}
+                        ZIndex={11}
+                    />
+                )}
+            </frame>
+        );
+    };

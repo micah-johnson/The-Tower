@@ -22,5 +22,4 @@ function disableCoreGUIs() {
 root.render(<App />)
 disableCoreGUIs()
 
-print("Client started!");
-print("Fard3");
+print("[The Tower] Client started!");

@@ -54,5 +54,3 @@ Players.PlayerAdded.Connect((player) => {
         profile.EndSession()
     }
 });
-
-print("Server started!");

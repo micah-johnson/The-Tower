@@ -77,7 +77,7 @@ export function ItemTooltip(props: {
                     TextSize={14}
                     TextWrapped={true}
                     ZIndex={1002}
-                    Text={`<font color="#${RARITY_COLORS[itemDef.rarity].ToHex()}">${itemDef.name}${props.item.stack > 0 ? ` (x${props.item.stack})` : ""}</font>\n${itemDef.description}`}
+                    Text={`<font color="#${RARITY_COLORS[itemDef.rarity].ToHex()}">${itemDef.name}${props.item.stack > 1 ? ` (x${props.item.stack})` : ""}</font>\n${itemDef.description}`}
                 />
             </frame>
         </>

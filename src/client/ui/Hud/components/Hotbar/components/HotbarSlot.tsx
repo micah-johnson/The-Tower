@@ -52,34 +52,6 @@ export function HotbarSlot(props: {
         }
 
         props.onSelected();
-
-        task.spawn(() => {
-            if (inventoryManager.getVersion() === 0) {
-                warn(`[C] Equip request for ${slotId} skipped: inventory not ready`);
-                return;
-            }
-
-            const item = inventoryManager.getItemInSlot(slotId);
-            const payload = {
-                itemUuid: item ? item.uuid : "",
-            };
-
-            const [success, response] = pcall(() =>
-                ClientNet.requestServer(
-                    EquipItemPacket,
-                    payload,
-                ),
-            );
-
-            if (!success) {
-                warn(`[C] Equip request for ${slotId} failed: ${response}`);
-                return;
-            }
-
-            if (!response.ok && response.error) {
-                warn(`[C] Equip request for ${slotId} rejected: ${response.error}`);
-            }
-        });
     };
 
     const handleInputBegan = (input: InputObject) => {

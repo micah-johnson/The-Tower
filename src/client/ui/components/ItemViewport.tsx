@@ -1,13 +1,9 @@
 import React, { useEffect, useRef } from "@rbxts/react";
-import { ItemDef, ItemInstance } from "../../../../shared/items";
-import { getItemTool } from "../../../../shared/items/util";
+import { ItemDef, ItemInstance } from "../../../shared/items";
+import { getItemTool } from "../../../shared/items/util";
 
 export function ItemViewport(props: {item: ItemDef | ItemInstance | undefined}) {
     const ref = useRef<ViewportFrame>()
-
-    if (!props.item) {
-        return (<></>)
-    }
 
     useEffect(() => {
         if (!ref.current || !props.item) return;
@@ -39,6 +35,10 @@ export function ItemViewport(props: {item: ItemDef | ItemInstance | undefined}) 
             ref.current?.ClearAllChildren();
         };
     }, [props.item]);
+
+    if (!props.item) {
+        return (<></>)
+    }
 
     return (
         <viewportframe key="ItemViewport" ImageTransparency={0.25} Size={UDim2.fromScale(1,1)} ref={ref} BackgroundTransparency={1} />

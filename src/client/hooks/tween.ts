@@ -7,7 +7,7 @@ type TweenableSet<T> = {
 
 export function useTweenableState<T, K extends TweenableSet<NonNullable<T>>> (
     ref: MutableRefObject<T>, 
-    property: K,
+    property: K | K[],
     initialValue: NonNullable<T>[K], 
     tweenInfo: TweenInfo
 ): LuaTuple<[NonNullable<T>[K], (value: NonNullable<T>[K]) => void]> {
@@ -21,9 +21,17 @@ export function useTweenableState<T, K extends TweenableSet<NonNullable<T>>> (
             return
         }
 
-        const tween = TweenService.Create(ref.current as unknown as Instance, tweenInfo, {
-            [property]: value
-        });
+        const properties: Map<K, any> = new Map
+
+        if (typeOf(property) === "string") {
+            properties.set(property as K, value)
+        } else {
+            (property as K[]).forEach(p => {
+                properties.set(property as K, value)
+            })
+        }
+
+        const tween = TweenService.Create(ref.current as unknown as Instance, tweenInfo, properties as Partial<ExtractMembers<Instance, Tweenable>>);
 
         tween.Completed.Once(() => setValue(value));
         tween.Play();

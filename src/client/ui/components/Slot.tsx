@@ -5,10 +5,9 @@ import { RARITY_COLORS } from "../../../shared/consts/colors";
 import { itemRepository } from "../../../shared/items/repository";
 import { useTweenableState } from "../../hooks/tween";
 import { keyCodeToString } from "../../../shared/utils/keycode";
-import { ItemViewport } from "../Inventory/components/ItemViewport";
+import { ItemViewport } from "./ItemViewport";
 import { inventoryManager } from "../../inventory/manager";
 import { ItemTooltip } from "./ItemTooltip";
-// const EquipItemEvent = folder.WaitForChild("EquipItem") as RemoteEvent;
 
 
 export function Slot(props: {
@@ -30,6 +29,11 @@ export function Slot(props: {
 
     const internalRef = useRef<Frame>()
     const ref = props.forwardRef ?? internalRef;
+    const strokeRef = useRef<UIStroke>()
+
+    const [backgroundColor, setBackgroundColor] = useTweenableState(ref, "BackgroundColor3", color, new TweenInfo(0.1, Enum.EasingStyle.Linear))
+    const [borderColor, setBorderColor] = useTweenableState(strokeRef, "Color", color, new TweenInfo(0.1, Enum.EasingStyle.Linear))
+
     const [transparency, setTransparency] = useTweenableState(ref, "BackgroundTransparency", 0.9, new TweenInfo(0.05, Enum.EasingStyle.Linear))
 
     useEffect(() => {
@@ -50,6 +54,11 @@ export function Slot(props: {
         setTransparency(defaultTransparency)
     }, [props.selected])
 
+    useEffect(() => {
+        setBackgroundColor(color)
+        setBorderColor(color)
+    }, [color])
+
     const stack = item?.stack;
 
     return (
@@ -59,7 +68,7 @@ export function Slot(props: {
             Size={UDim2.fromOffset(50, 50)} 
             Position={UDim2.fromOffset(0, -5)}
             AnchorPoint={new Vector2(0, 1)}
-            BackgroundColor3={color}
+            BackgroundColor3={backgroundColor}
             BackgroundTransparency={transparency}
             Active
             Event={{
@@ -69,7 +78,7 @@ export function Slot(props: {
             }}
         >
             {item && <ItemTooltip item={item} itemDef={itemDef} /> }
-            <uistroke Color={color} Transparency={item ? 0 : 0.3} />
+            <uistroke ref={strokeRef} Color={borderColor} Transparency={item ? 0 : 0.3} />
             <uicorner CornerRadius={new UDim(0,3)}/>
 
             {/* Keybind Label */}
@@ -104,7 +113,7 @@ export function Slot(props: {
             {/* Render item model */}
             <ItemViewport item={item} />
 
-            {/* Button for equiping */}
+            {/* Button for interaction */}
             <textbutton
                 BackgroundTransparency={1}
                 key="HotbarSlotButton"
