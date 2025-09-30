@@ -17,6 +17,9 @@ export function Slot(props: {
     selected?: boolean,
     onActivated?: () => void
     children?: React.ReactNode
+    onInputBegan?: (input: InputObject) => void;
+    onMouseDown?: (position: Vector2) => void;
+    forwardRef?: MutableRefObject<Frame | undefined>;
 }) {
     const item = inventoryManager.getItemInSlot(props.id)
 
@@ -25,18 +28,23 @@ export function Slot(props: {
     const defaultTransparency = props.selected ? 0.7 : 0.9
     const color = itemDef ? RARITY_COLORS[itemDef.rarity] : Color3.fromHex("#f5f5f5")
 
-    const ref = useRef<Frame>()
+    const internalRef = useRef<Frame>()
+    const ref = props.forwardRef ?? internalRef;
     const [transparency, setTransparency] = useTweenableState(ref, "BackgroundTransparency", 0.9, new TweenInfo(0.05, Enum.EasingStyle.Linear))
 
     useEffect(() => {
-        if (props.keybind) {
-            UserInputService.InputBegan.Connect(input => {
-                if (input.KeyCode === props.keybind) {
-                    props.onActivated?.()
-                }
-            })
+        if (!props.keybind) {
+            return;
         }
-    }, [props.keybind])
+
+        const connection = UserInputService.InputBegan.Connect(input => {
+            if (input.UserInputType === Enum.UserInputType.Keyboard && input.KeyCode === props.keybind) {
+                props.onActivated?.()
+            }
+        });
+
+        return () => connection.Disconnect();
+    }, [props.keybind, props.onActivated]);
 
     useEffect(() => {
         setTransparency(defaultTransparency)
@@ -53,9 +61,11 @@ export function Slot(props: {
             AnchorPoint={new Vector2(0, 1)}
             BackgroundColor3={color}
             BackgroundTransparency={transparency}
+            Active
             Event={{
                 MouseEnter: () => setTransparency(0.8),
                 MouseLeave: () => setTransparency(defaultTransparency),
+                InputBegan: (_rbx, input) => props.onInputBegan?.(input),
             }}
         >
             {item && <ItemTooltip item={item} itemDef={itemDef} /> }
@@ -95,7 +105,16 @@ export function Slot(props: {
             <ItemViewport item={item} />
 
             {/* Button for equiping */}
-            <textbutton BackgroundTransparency={1} key="HotbarSlotButton" Text="" Size={UDim2.fromScale(1,1)} Event={{ MouseButton1Click: props.onActivated }} />
+            <textbutton
+                BackgroundTransparency={1}
+                key="HotbarSlotButton"
+                Text=""
+                Size={UDim2.fromScale(1, 1)}
+                Event={{
+                    MouseButton1Click: props.onActivated,
+                    MouseButton1Down: (_rbx, x, y) => props.onMouseDown?.(new Vector2(x, y)),
+                }}
+            />
             {props.children}
         </frame>
     )

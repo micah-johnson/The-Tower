@@ -1,6 +1,7 @@
 import React from "@rbxts/react";
 import { createRoot } from "@rbxts/react-roblox";
 import { Players, RunService, StarterGui } from "@rbxts/services";
+import "./network/handlers";
 import App from "./ui/App";
 
 const IS_STUDIO = RunService.IsStudio();
@@ -22,3 +23,4 @@ root.render(<App />)
 disableCoreGUIs()
 
 print("Client started!");
+print("Fard3");

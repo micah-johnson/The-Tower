@@ -1,70 +1,61 @@
+import { InventorySnapshot } from "../../shared/network";
 import { ItemInstance } from "../../shared/items";
 import { BiMap } from "../../shared/utils/bimap";
 import { Signal } from "../../shared/utils/signal";
 
+function cloneItem(item: ItemInstance): ItemInstance {
+    return {
+        uuid: item.uuid,
+        id: item.id,
+        stack: item.stack,
+        attr: item.attr.map((attr) => ({ ...attr })),
+    };
+}
+
 export class InventoryManager {
-    private _version = 0; // bump on every mutation
+    private _version = 0;
     readonly changed = new Signal<[number]>();
-    
-    slots: BiMap<string, string> = new BiMap() // slot_id -> item.uuid
-    items: Map<string, ItemInstance> = new Map() // item.uuid -> item
 
-    // Add item to inventory, returns passed item
-    addItem(item: ItemInstance): ItemInstance {
-        this.items.set(item.uuid, item)
+    private slots = new BiMap<string, string>();
+    private items = new Map<string, ItemInstance>();
+    private knownSlots = new Set<string>();
 
-        this.bump()
+    applySnapshot(snapshot: InventorySnapshot) {
+        this.items.clear();
+        this.slots.clear();
+        this.knownSlots.clear();
 
-        return item
+        for (const [uuid, item] of pairs(snapshot.items)) {
+            this.items.set(uuid, cloneItem(item));
+        }
+
+        for (const [slot, itemUuid] of pairs(snapshot.slots)) {
+            this.knownSlots.add(slot);
+            if (itemUuid !== undefined) {
+                this.slots.set(slot, itemUuid);
+            }
+        }
+
+        this._version = snapshot.version;
+        this.changed.Fire(this._version);
     }
 
     getItem(uuid: string) {
-        return this.items.get(uuid)
-    }
-
-    setSlot(slot: string, item: ItemInstance) {
-        this.slots.set(slot, item.uuid)
-
-        this.bump()
-    }
-
-    getSlotOfItem(item: ItemInstance) {
-        this.slots.getByValue(item.uuid)
+        return this.items.get(uuid);
     }
 
     getItemInSlot(slot: string) {
-        const uuid = this.slots.getByKey(slot)
-        
-        return uuid ? this.getItem(uuid) : undefined
+        const uuid = this.slots.getByKey(slot);
+        return uuid ? this.items.get(uuid) : undefined;
     }
 
-    private bump() {
-        this._version++
-        this.changed.Fire(this._version)
+    getSlotOfItem(item: ItemInstance) {
+        return this.slots.getByValue(item.uuid);
     }
 
-    /** For React: stable snapshot primitive */
     getVersion() {
-        return this._version
+        return this._version;
     }
 }
 
-export const inventoryManager = new InventoryManager()
-
-const item = inventoryManager.addItem({
-    uuid: "efa360f3-8e56-4c68-9117-0c9189fd8d99",
-    id: "rape_sword",
-    attr: [],
-    stack: 1
-})
-
-inventoryManager.setSlot("hotbar_1", item)
-
-const sword = inventoryManager.addItem({
-    uuid: "0604bf61-97e5-4c65-ab34-f140da0f844a",
-    id: "sword",
-    attr: [],
-    stack: 500
-})
-
-inventoryManager.setSlot("hotbar_2", sword)
+export const inventoryManager = new InventoryManager();

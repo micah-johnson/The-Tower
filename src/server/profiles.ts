@@ -1,18 +1,26 @@
 import ProfileStore from "@rbxts/profile-store";
 import { Players } from "@rbxts/services";
 import { ItemInstance } from "../shared/items";
+import { InventorySnapshot } from "../shared/network";
+import { bindPlayerInventory, unbindPlayerInventory } from "./inventory/service";
 
 const PROFILE_TEMPLATE: {
     cum: number,
-    items: ItemInstance[]
+    inventory: InventorySnapshot,
 } = {
     cum: 0,
-    items: []
-}
+    inventory: {
+        version: 0,
+        slots: {},
+        items: {},
+    },
+};
 
 const PlayerStore = ProfileStore.New("PlayerStore", PROFILE_TEMPLATE)
 
 const profiles: Record<number, ReturnType<typeof PlayerStore.StartSessionAsync>> = {}
+
+export type PlayerProfile = ReturnType<typeof PlayerStore.StartSessionAsync>;
 
 export function getProfile(player: Player) {
     return profiles[player.UserId]
@@ -33,12 +41,14 @@ Players.PlayerAdded.Connect((player) => {
     profile.Reconcile()
 
     profile.OnSessionEnd.Connect(() => {
+        unbindPlayerInventory(player);
         delete profiles[player.UserId]
         player.Kick("Session Ended, please reconnect")
     })
 
     if (player.Parent === Players) {
         profiles[player.UserId] = profile
+        bindPlayerInventory(player, profile)
     } else {
         // Player left before session started
         profile.EndSession()

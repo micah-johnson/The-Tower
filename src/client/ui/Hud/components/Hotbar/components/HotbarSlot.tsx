@@ -1,7 +1,10 @@
-import React from "@rbxts/react";
+import React, { useEffect, useRef } from "@rbxts/react";
 import { ItemInstance } from "../../../../../../shared/items";
+import { EquipItemPacket, EquipItemResponse, PacketClass, PacketDirection } from "../../../../../../shared/network";
 import { Slot } from "../../../../components/Slot";
 import { useInventoryVersion } from "../../../../../hooks/inventory";
+import { inventoryManager } from "../../../../../inventory/manager";
+import { ClientNet } from "../../../../../network";
 
 // const EquipItemEvent = folder.WaitForChild("EquipItem") as RemoteEvent;
 
@@ -21,13 +24,114 @@ const keyMap: Partial<Record<number, Enum.KeyCode>> = {
 export function HotbarSlot(props: {
     num: number,
     selected: boolean,
-    item?: ItemInstance,
-    onSelected: () => void
+    onSelected: () => void;
+    onDragStart: (slotId: string, item: ItemInstance, pointerPosition: Vector2, frame: Frame) => void;
+    registerSlot: (slotId: string, frame: Frame) => void;
+    unregisterSlot: (slotId: string) => void;
+    isDragging: boolean;
 }) {
     // Listen to inventory changes
     useInventoryVersion();
 
+    const slotId = `hotbar_${props.num}`;
+    const frameRef = useRef<Frame>();
+
+    useEffect(() => {
+        const frame = frameRef.current;
+        if (!frame) {
+            return;
+        }
+
+        props.registerSlot(slotId, frame);
+        return () => props.unregisterSlot(slotId);
+    }, []);
+
+    const handleActivated = () => {
+        if (props.isDragging) {
+            return;
+        }
+
+        props.onSelected();
+
+        task.spawn(() => {
+            if (inventoryManager.getVersion() === 0) {
+                warn(`[C] Equip request for ${slotId} skipped: inventory not ready`);
+                return;
+            }
+
+            const item = inventoryManager.getItemInSlot(slotId);
+            const payload = {
+                slot: slotId,
+                itemId: item ? item.uuid : "",
+            };
+
+            const [success, rawResponse] = pcall(() =>
+                ClientNet.requestServer(
+                    EquipItemPacket as PacketClass<any, any, typeof PacketDirection.ClientToServerRequest>,
+                    payload,
+                ) as EquipItemResponse,
+            );
+            if (!success) {
+                warn(`[C] Equip request for ${slotId} failed: ${rawResponse}`);
+                return;
+            }
+
+            const response = rawResponse as EquipItemResponse;
+            if (!response.ok && response.error) {
+                warn(`[C] Equip request for ${slotId} rejected: ${response.error}`);
+            }
+        });
+    };
+
+    const handleInputBegan = (input: InputObject) => {
+        if (input.UserInputType !== Enum.UserInputType.MouseButton1) {
+            return;
+        }
+
+        print(`[HotbarSlot] InputBegan ${slotId}`);
+        if (props.isDragging) {
+            return;
+        }
+
+        const frame = frameRef.current;
+        if (!frame) {
+            warn(`[HotbarSlot] no frame ref for ${slotId}`);
+            return;
+        }
+
+        const item = inventoryManager.getItemInSlot(slotId);
+        if (!item) {
+            warn(`[HotbarSlot] no item in ${slotId} for drag`);
+            return;
+        }
+
+        const pointerPosition = new Vector2(input.Position.X, input.Position.Y);
+        props.onDragStart(slotId, item, pointerPosition, frame);
+    };
+
+    const handleMouseDown = (position: Vector2) => {
+        const frame = frameRef.current;
+        if (!frame) {
+            return;
+        }
+
+        const item = inventoryManager.getItemInSlot(slotId);
+        if (!item) {
+            return;
+        }
+
+        props.onDragStart(slotId, item, position, frame);
+    };
+
     return (
-        <Slot id={`hotbar_${props.num}`} keybind={keyMap[props.num]} selected={props.selected} onActivated={props.onSelected} />
+        <Slot
+            id={slotId}
+            keybind={keyMap[props.num]}
+            selected={props.selected}
+            onActivated={handleActivated}
+            onInputBegan={handleInputBegan}
+            onMouseDown={handleMouseDown}
+            forwardRef={frameRef}
+        />
     )
 }

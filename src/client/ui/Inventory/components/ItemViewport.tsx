@@ -21,6 +21,7 @@ export function ItemViewport(props: {item: ItemDef | ItemInstance | undefined}) 
         world.Parent = ref.current;
 
         const clone = tool.Clone();
+        stripInteractiveDescendants(clone);
         clone.Parent = world;
 
         const [cf, size] = (clone as Model).GetBoundingBox();
@@ -42,4 +43,12 @@ export function ItemViewport(props: {item: ItemDef | ItemInstance | undefined}) 
     return (
         <viewportframe key="ItemViewport" ImageTransparency={0.25} Size={UDim2.fromScale(1,1)} ref={ref} BackgroundTransparency={1} />
     )
+}
+
+function stripInteractiveDescendants(instance: Instance) {
+    for (const descendant of instance.GetDescendants()) {
+        if (descendant.IsA("BaseScript") || descendant.IsA("RemoteFunction") || descendant.IsA("RemoteEvent")) {
+            descendant.Destroy();
+        }
+    }
 }
