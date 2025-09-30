@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "@rbxts/react";
 import { ItemInstance } from "../../../../../../shared/items";
-import { EquipItemPacket, EquipItemResponse, PacketClass, PacketDirection } from "../../../../../../shared/network";
+import { EquipItemPacket, MoveItemPacket, MoveItemResponse, PacketClass, PacketDirection } from "../../../../../../shared/network";
 import { Slot } from "../../../../components/Slot";
 import { useInventoryVersion } from "../../../../../hooks/inventory";
 import { inventoryManager } from "../../../../../inventory/manager";
@@ -61,22 +61,21 @@ export function HotbarSlot(props: {
 
             const item = inventoryManager.getItemInSlot(slotId);
             const payload = {
-                slot: slotId,
-                itemId: item ? item.uuid : "",
+                itemUuid: item ? item.uuid : "",
             };
 
-            const [success, rawResponse] = pcall(() =>
+            const [success, response] = pcall(() =>
                 ClientNet.requestServer(
-                    EquipItemPacket as PacketClass<any, any, typeof PacketDirection.ClientToServerRequest>,
+                    EquipItemPacket,
                     payload,
-                ) as EquipItemResponse,
+                ),
             );
+
             if (!success) {
-                warn(`[C] Equip request for ${slotId} failed: ${rawResponse}`);
+                warn(`[C] Equip request for ${slotId} failed: ${response}`);
                 return;
             }
 
-            const response = rawResponse as EquipItemResponse;
             if (!response.ok && response.error) {
                 warn(`[C] Equip request for ${slotId} rejected: ${response.error}`);
             }

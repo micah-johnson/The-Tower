@@ -6,7 +6,7 @@ import { HotbarSlot } from "./components/HotbarSlot";
 import { inventoryManager } from "../../../../inventory/manager";
 import { itemRepository } from "../../../../../shared/items/repository";
 import { RARITY_COLORS } from "../../../../../shared/consts/colors";
-import { EquipItemPacket, EquipItemResponse, PacketClass, PacketDirection } from "../../../../../shared/network";
+import { MoveItemPacket, MoveItemResponse, PacketClass, PacketDirection, PayloadOf, ResponseOf } from "../../../../../shared/network";
 import { ClientNet } from "../../../../network";
 import { ItemInstance } from "../../../../../shared/items";
 import { ItemViewport } from "../../../Inventory/components/ItemViewport";
@@ -35,17 +35,17 @@ export function Hotbar() {
         return new Vector2(position.X - inset.X, position.Y - inset.Y);
     }, []);
 
-    const requestEquip = useCallback((slot: string, itemUuid: string) => {
+    const requestMove = useCallback((slot: string, itemUuid: string) => {
         const payload = {
             slot,
-            itemId: itemUuid,
+            itemUuid: itemUuid,
         };
 
         const [success, result] = pcall(() =>
             ClientNet.requestServer(
-                EquipItemPacket as PacketClass<any, any, typeof PacketDirection.ClientToServerRequest>,
+                MoveItemPacket,
                 payload,
-            ) as EquipItemResponse,
+            ),
         );
 
         if (!success) {
@@ -53,7 +53,7 @@ export function Hotbar() {
             return;
         }
 
-        const response = result as EquipItemResponse;
+        const response = result as MoveItemResponse;
         if (!response.ok && response.error) {
             warn(`[Hotbar] Equip request for ${slot} rejected: ${response.error}`);
             return;
@@ -117,17 +117,17 @@ export function Hotbar() {
         task.spawn(() => {
             if (targetItem && targetItem.uuid !== state.itemUuid) {
                 print(`[Hotbar] swapping ${draggedItem.id} (${state.originSlot}) with ${targetItem.id} (${targetSlot})`);
-                requestEquip(state.originSlot, targetItem.uuid);
+                requestMove(state.originSlot, targetItem.uuid);
             }
 
             print(`[Hotbar] moving ${draggedItem.id} to ${targetSlot}`);
-            requestEquip(targetSlot, state.itemUuid);
+            requestMove(targetSlot, state.itemUuid);
         });
 
         const digits = string.match(targetSlot, "hotbar_(%d+)");
         const slotNumber = digits !== undefined ? tonumber(digits) ?? selected : selected;
         setSelected(slotNumber);
-    }, [adjustForInset, findSlotUnderPoint, requestEquip, selected]);
+    }, [adjustForInset, findSlotUnderPoint, requestMove, selected]);
 
     useEffect(() => {
         if (!dragState) {
@@ -136,9 +136,10 @@ export function Hotbar() {
 
         const moveConn = UserInputService.InputChanged.Connect((input) => {
             if (input.UserInputType === Enum.UserInputType.MouseMovement) {
-        const pointer = adjustForInset(new Vector2(input.Position.X, input.Position.Y));
-        setDragPosition(pointer);
-        print(`[Hotbar] move -> (${pointer.X}, ${pointer.Y})`);
+                // Adjust for inset not necessary for this event, raw position is returned by default.
+                const pointer = new Vector2(input.Position.X, input.Position.Y);
+                setDragPosition(pointer);
+                print(`[Hotbar] move -> (${pointer.X}, ${pointer.Y})`);
             }
         });
 
@@ -217,7 +218,7 @@ export function Hotbar() {
 
         const itemDef = itemRepository.get(item.id);
         const color = itemDef ? RARITY_COLORS[itemDef.rarity] : Color3.fromHex("#f5f5f5");
-        const screenPosition = new Vector2(dragPosition.X - 25, dragPosition.Y - 25);
+        const screenPosition = new Vector2(dragPosition.X - 25, dragPosition.Y + 25);
 
         return (
             <frame

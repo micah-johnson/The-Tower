@@ -2,15 +2,18 @@ import { HttpService, RunService } from "@rbxts/services";
 import { ItemInstance } from "../../shared/items";
 import { itemRepository } from "../../shared/items/repository";
 import {
-    EquipItemRequest,
-    EquipItemResponse,
+    MoveItemRequest,
+    MoveItemResponse,
     InventorySnapshot,
     InventoryUpdatePacket,
     PacketClass,
     PacketDirection,
+    EquipItemRequest,
+    EquipItemResponse,
 } from "../../shared/network";
 import { ServerNet } from "../network";
 import type { PlayerProfile } from "../profiles";
+import { getItemTool } from "../../shared/items/util";
 
 const ALLOWED_SLOTS = ["hotbar_1", "hotbar_2", "hotbar_3", "hotbar_4", "hotbar_5", "hotbar_6", "hotbar_7", "hotbar_8", "hotbar_9", "hotbar_0"] as const;
 const ALLOWED_SLOT_SET = new Set<string>(ALLOWED_SLOTS);
@@ -101,7 +104,7 @@ class PlayerInventory {
         this.syncToClient();
     }
 
-    equip(slot: string, itemUuid: string): EquipItemResponse {
+    move(slot: string, itemUuid: string): MoveItemResponse {
         if (!isValidSlot(slot)) {
             return { ok: false, error: "Invalid slot" };
         }
@@ -158,6 +161,68 @@ class PlayerInventory {
 
     dispose() {
         this.profile.Data.inventory = this.toSnapshot();
+    }
+
+    equip(itemUuid: string): EquipItemResponse {
+        if (!this.player.Character) {
+            return {
+                ok: false,
+                error: "Player character does not exist."
+            }
+        }
+
+        if (itemUuid === "") { // Equipped null item
+            // Unequip all tools
+            for (const child of this.player.Character.GetChildren()) {
+                if (child.IsA("Tool")) {
+                    child.Destroy()
+                }
+            }
+
+            return {
+                ok: true
+            }
+        }
+
+
+        const item = this.items.get(itemUuid)
+
+        if (!item) {
+            return {
+                ok: false,
+                error: "Item does not belong to player!"
+            }
+        }
+
+        const tool = getItemTool(item)
+
+        if (!tool) {
+            return {
+                ok: false,
+                error: "Unable to find tool instance."
+            }
+        }
+
+        // Handle equipped tools
+        for (const child of this.player.Character.GetChildren()) {
+            if (child.IsA("Tool")) {
+                if (child.Name === item.id) { // If tool already equipped, return
+                    return {
+                        ok: true
+                    }
+                }
+
+                child.Destroy() // Otherwise destroy equipped tool
+            }
+        }
+
+        const clone = tool.Clone()
+
+        clone.Parent = this.player.Character
+
+        return {
+            ok: true
+        }
     }
 
     private loadSnapshot(snapshot: InventorySnapshot) {
@@ -283,6 +348,18 @@ export function unbindPlayerInventory(player: Player) {
     heartbeatState.delete(player.UserId);
 }
 
+export function handleMoveRequest(player: Player, payload: MoveItemRequest): MoveItemResponse {
+    const inventory = playerInventories.get(player.UserId);
+    if (!inventory) {
+        return {
+            ok: false,
+            error: "Inventory not ready",
+        };
+    }
+
+    return inventory.move(payload.slot, payload.itemUuid);
+}
+
 export function handleEquipRequest(player: Player, payload: EquipItemRequest): EquipItemResponse {
     const inventory = playerInventories.get(player.UserId);
     if (!inventory) {
@@ -292,7 +369,7 @@ export function handleEquipRequest(player: Player, payload: EquipItemRequest): E
         };
     }
 
-    return inventory.equip(payload.slot, payload.itemId);
+    return inventory.equip(payload.itemUuid)
 }
 
 export function updateHeartbeat(player: Player, state: HeartbeatState) {

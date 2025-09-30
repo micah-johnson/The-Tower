@@ -142,15 +142,16 @@ export const ClientNet = {
         clientEventRemote.FireServer(meta.opcode, payload);
     },
 
-    requestServer<C extends PacketClass<any, any, typeof PacketDirection.ClientToServerRequest>>(
-        packet: C,
-        payload: PayloadOf<C>,
+    requestServer<T extends PacketClass<any,any>>(
+        packet: T,
+        payload: PayloadOf<T>,
     ) {
         const meta = expectPacketDirection(packet, PacketDirection.ClientToServerRequest);
         if (!validatePacketPayload(meta, payload)) {
-        error(`[C] Attempted to request server with invalid payload for ${packetName(packet)} (opcode ${meta.opcode})`);
+            error(`[C] Attempted to request server with invalid payload for ${packetName(packet)} (opcode ${meta.opcode})`);
         }
-        return clientRequestRemote.InvokeServer(meta.opcode, payload) as ResponseOf<C>;
+
+        return clientRequestRemote.InvokeServer(meta.opcode, payload) as ResponseOf<T>;
     },
 
     setServerRequestHandler<C extends PacketClass<any, any, typeof PacketDirection.ServerToClientRequest>>(
