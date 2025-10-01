@@ -8,23 +8,29 @@ import { keyCodeToString } from "../../../shared/utils/keycode";
 import { ItemViewport } from "./ItemViewport";
 import { inventoryManager } from "../../inventory/manager";
 import { ItemTooltip } from "./ItemTooltip";
+import { useItemDragging } from "../context/ItemDraggingContext";
+import { ClientNet } from "../../network";
+import { MoveItemRequest, MoveItemsPacket, PayloadOf } from "../../../shared/network";
+import { useInventoryVersion } from "../../hooks/inventory";
 
 
 export function Slot(props: {
-    id: string,
+    slotId: string,
     keybind?: Enum.KeyCode,
-    selected?: boolean,
     onActivated?: () => void
     children?: React.ReactNode
-    onInputBegan?: (input: InputObject) => void;
     onMouseDown?: (position: Vector2) => void;
+    onMouseUp?: (position: Vector2) => void;
     forwardRef?: MutableRefObject<Frame | undefined>;
 }) {
-    const item = inventoryManager.getItemInSlot(props.id)
+    const item = inventoryManager.getItemInSlot(props.slotId)
+    const selected = inventoryManager.getEquippedSlot() === props.slotId
 
     const itemDef = useMemo(() => item ? itemRepository.get(item.id) : undefined, [item])
+    
+    const { dragState, setDragState } = useItemDragging();
 
-    const defaultTransparency = props.selected ? 0.7 : 0.9
+    const defaultTransparency = selected ? 0.7 : 0.9
     const color = itemDef ? RARITY_COLORS[itemDef.rarity] : Color3.fromHex("#f5f5f5")
 
     const internalRef = useRef<Frame>()
@@ -35,6 +41,62 @@ export function Slot(props: {
     const [borderColor, setBorderColor] = useTweenableState(strokeRef, "Color", color, new TweenInfo(0.1, Enum.EasingStyle.Linear))
 
     const [transparency, setTransparency] = useTweenableState(ref, "BackgroundTransparency", 0.9, new TweenInfo(0.05, Enum.EasingStyle.Linear))
+
+    function handleClick() {
+        inventoryManager.equipSlot(props.slotId)
+    }
+
+    function handleMouseDown(position: Vector2) {
+        // Invoke parent handler
+        props.onMouseDown?.(position)
+
+        if (item && !dragState) {
+            setDragState({
+                originSlot: props.slotId,
+                itemUuid: item.uuid
+            })
+        }
+    }
+
+    function handleMouseUp(position: Vector2) {
+        props.onMouseUp?.(position)
+
+        // Initiate transfer
+        if (dragState) {
+            const moves: MoveItemRequest = []
+            if (item) { // slot has item, set up for swap
+                moves.push({
+                    slot: dragState.originSlot,
+                    itemUuid: item.uuid,
+                });
+            }
+
+            moves.push({
+                slot: props.slotId,
+                itemUuid: dragState.itemUuid,
+            });
+
+            const [success, result] = pcall(() =>
+                ClientNet.requestServer(
+                    MoveItemsPacket,
+                    moves,
+                ),
+            );
+
+            if (!success) {
+                warn(`[Hotbar] Equip request for ${props.slotId} failed: ${result}`);
+                return;
+            }
+
+            const response = result;
+            if (!response.ok && response.error) {
+                warn(`[Hotbar] Equip request for ${props.slotId} rejected: ${response.error}`);
+                return;
+            }
+
+            print(`[Hotbar] Equip request accepted for ${props.slotId}`);
+        }
+    }
 
     useEffect(() => {
         if (!props.keybind) {
@@ -52,7 +114,7 @@ export function Slot(props: {
 
     useEffect(() => {
         setTransparency(defaultTransparency)
-    }, [props.selected])
+    }, [selected])
 
     useEffect(() => {
         setBackgroundColor(color)
@@ -64,7 +126,7 @@ export function Slot(props: {
     return (
         <frame 
             ref={ref}
-            key="Slot"
+            key={"Slot"}
             Size={UDim2.fromOffset(50, 50)} 
             Position={UDim2.fromOffset(0, -5)}
             AnchorPoint={new Vector2(0, 1)}
@@ -74,7 +136,6 @@ export function Slot(props: {
             Event={{
                 MouseEnter: () => setTransparency(0.8),
                 MouseLeave: () => setTransparency(defaultTransparency),
-                InputBegan: (_rbx, input) => props.onInputBegan?.(input),
             }}
         >
             {item && <ItemTooltip item={item} itemDef={itemDef} /> }
@@ -120,8 +181,9 @@ export function Slot(props: {
                 Text=""
                 Size={UDim2.fromScale(1, 1)}
                 Event={{
-                    MouseButton1Click: props.onActivated,
-                    MouseButton1Down: (_rbx, x, y) => props.onMouseDown?.(new Vector2(x, y)),
+                    MouseButton1Click: (_rbx) => handleClick(),
+                    MouseButton1Down: (_rbx, x, y) => handleMouseDown(new Vector2(x, y)),
+                    MouseButton1Up: (_rbx, x, y) => handleMouseUp(new Vector2(x,y))
                 }}
             />
             {props.children}

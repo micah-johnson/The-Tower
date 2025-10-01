@@ -41,7 +41,7 @@ export function ItemViewport(props: {item: ItemDef | ItemInstance | undefined}) 
     }
 
     return (
-        <viewportframe key="ItemViewport" ImageTransparency={0.25} Size={UDim2.fromScale(1,1)} ref={ref} BackgroundTransparency={1} />
+        <viewportframe key="ItemViewport" Size={UDim2.fromScale(1,1)} ref={ref} BackgroundTransparency={1} />
     )
 }
 

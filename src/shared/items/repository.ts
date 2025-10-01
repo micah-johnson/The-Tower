@@ -49,4 +49,46 @@ export const itemRepository = new ItemRepository([{
     maxStack: 1,
     transferable: false,
     durability: -1,
+}, {
+    id: "rare_sword",
+    name: "Sword",
+    type: ItemType.WEAPON,
+    description: `A boring ahh sword sword, does <font color="#ff2b1c">not</font> rape your opponents...`,
+    rarity: ItemRarity.RARE,
+    attr: [{
+        attribute: Attribute.DAMAGE,
+        type: "additive",
+        value: 5
+    }],
+    maxStack: 1,
+    transferable: false,
+    durability: -1,
+}, {
+    id: "epic_sword",
+    name: "Sword",
+    type: ItemType.WEAPON,
+    description: `A boring ahh sword sword, does <font color="#ff2b1c">not</font> rape your opponents...`,
+    rarity: ItemRarity.EPIC,
+    attr: [{
+        attribute: Attribute.DAMAGE,
+        type: "additive",
+        value: 5
+    }],
+    maxStack: 1,
+    transferable: false,
+    durability: -1,
+}, {
+    id: "legendary_sword",
+    name: "Sword",
+    type: ItemType.WEAPON,
+    description: `A boring ahh sword sword, does <font color="#ff2b1c">not</font> rape your opponents...`,
+    rarity: ItemRarity.LEGENDARY,
+    attr: [{
+        attribute: Attribute.DAMAGE,
+        type: "additive",
+        value: 5
+    }],
+    maxStack: 1,
+    transferable: false,
+    durability: -1,
 }]);

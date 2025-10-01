@@ -17,6 +17,10 @@ export class BiMap<K, V> {
     this.backward.set(v, k);
   }
 
+  forEach(callback: (v: V, k: K, self: Map<K,V>) => void) {
+    this.forward.forEach(callback)
+  }
+
   getByKey(k: K): V | undefined {
     return this.forward.get(k);
   }

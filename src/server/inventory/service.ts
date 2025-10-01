@@ -2,7 +2,7 @@ import { HttpService, RunService } from "@rbxts/services";
 import { ItemInstance } from "../../shared/items";
 import { itemRepository } from "../../shared/items/repository";
 import {
-    MoveItemRequest,
+    MoveItemRequest as MoveItemsRequest,
     MoveItemResponse,
     InventorySnapshot,
     InventoryUpdatePacket,
@@ -83,6 +83,7 @@ function isEmptyRecord(record: Record<string, unknown>) {
     for (const _ of pairs(record)) {
         return false;
     }
+    
     return true;
 }
 
@@ -104,10 +105,10 @@ class PlayerInventory {
         this.syncToClient();
     }
 
-    move(slot: string, itemUuid: string): MoveItemResponse {
-        if (!isValidSlot(slot)) {
-            return { ok: false, error: "Invalid slot" };
-        }
+    move(slot: string, itemUuid: string, skipSync?: boolean): MoveItemResponse {
+        // if (!isValidSlot(slot)) {
+        //     return { ok: false, error: "Invalid slot" };
+        // }
 
         const normalizedItemUuid = itemUuid === "" ? undefined : itemUuid;
         this.ensureSlotTracked(slot);
@@ -145,7 +146,7 @@ class PlayerInventory {
         }
 
         this.slotAssignments.set(slot, normalizedItemUuid);
-        this.bumpAndSync();
+        if (!skipSync) this.bumpAndSync();
         return { ok: true };
     }
 
@@ -254,7 +255,7 @@ class PlayerInventory {
         }
     }
 
-    private bumpAndSync() {
+    bumpAndSync() {
         this.version += 1;
         this.syncToClient();
     }
@@ -266,14 +267,10 @@ class PlayerInventory {
 
         let dirty = false;
 
-        const ensureItem = (defId: string, slot: string) => {
+        const ensureItem = (defId: string) => {
             const existingUuid = this.findItemUuidByDef(defId);
             if (existingUuid) {
-                if (this.slotAssignments.get(slot) !== existingUuid) {
-                    this.slotAssignments.set(slot, existingUuid);
-                    dirty = true;
-                }
-                return;
+                return
             }
 
             const created = createItemInstance(defId, 1);
@@ -283,12 +280,13 @@ class PlayerInventory {
             }
 
             this.items.set(created.uuid, created);
-            this.slotAssignments.set(slot, created.uuid);
-            dirty = true;
         };
 
-        ensureItem("sword", "hotbar_1");
-        ensureItem("rape_sword", "hotbar_2");
+        ensureItem("rape_sword");
+        ensureItem("sword")
+        ensureItem("rare_sword")
+        ensureItem("epic_sword")
+        ensureItem("legendary_sword")
 
         if (dirty) {
             this.bumpAndSync();
@@ -323,10 +321,6 @@ class PlayerInventory {
     }
 }
 
-function isValidSlot(slot: string) {
-    return ALLOWED_SLOT_SET.has(slot);
-}
-
 export function bindPlayerInventory(player: Player, profile: PlayerProfile) {
     const existing = playerInventories.get(player.UserId);
     if (existing) {
@@ -348,7 +342,7 @@ export function unbindPlayerInventory(player: Player) {
     heartbeatState.delete(player.UserId);
 }
 
-export function handleMoveRequest(player: Player, payload: MoveItemRequest): MoveItemResponse {
+export function handleMoveRequest(player: Player, payload: MoveItemsRequest): MoveItemResponse {
     const inventory = playerInventories.get(player.UserId);
     if (!inventory) {
         return {
@@ -357,7 +351,20 @@ export function handleMoveRequest(player: Player, payload: MoveItemRequest): Mov
         };
     }
 
-    return inventory.move(payload.slot, payload.itemUuid);
+    for (const move of payload) {
+        const response = inventory.move(move.slot, move.itemUuid, true)
+
+        if (!response.ok) {
+            inventory.bumpAndSync()
+            return response
+        }
+    }
+
+    inventory.bumpAndSync()
+
+    return {
+        ok: true
+    };
 }
 
 export function handleEquipRequest(player: Player, payload: EquipItemRequest): EquipItemResponse {

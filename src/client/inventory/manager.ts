@@ -1,9 +1,10 @@
-import { EquipItemPacket, InventorySnapshot } from "../../shared/network";
+import { EquipItemPacket, InventorySnapshot, MoveItemRequest, MoveItemsPacket } from "../../shared/network";
 import { ItemInstance } from "../../shared/items";
 import { BiMap } from "../../shared/utils/bimap";
 import { Signal } from "../../shared/utils/signal";
 import { isSlotEquippable } from "../../shared/items/util";
 import { ClientNet } from "../network";
+import { HttpService } from "@rbxts/services";
 
 function cloneItem(item: ItemInstance): ItemInstance {
     return {
@@ -18,23 +19,20 @@ export class InventoryManager {
     private _version = 0;
     readonly changed = new Signal<[number]>();
 
-    private slots = new BiMap<string, string>();
+    private slots = new BiMap<string, string>(); // slot_id -> item_uuid
     private items = new Map<string, ItemInstance>();
-    private knownSlots = new Set<string>();
 
     private equippedSlot: string | undefined // id of equipped slot,
 
     applySnapshot(snapshot: InventorySnapshot) {
         this.items.clear();
         this.slots.clear();
-        this.knownSlots.clear();
 
         for (const [uuid, item] of pairs(snapshot.items)) {
             this.items.set(uuid, cloneItem(item));
         }
 
         for (const [slot, itemUuid] of pairs(snapshot.slots)) {
-            this.knownSlots.add(slot);
             if (itemUuid !== undefined) {
                 this.slots.set(slot, itemUuid);
             }
@@ -44,6 +42,65 @@ export class InventoryManager {
         this.changed.Fire(this._version);
 
         if (this.equippedSlot) this.equipSlot(this.equippedSlot)
+
+        this.moveStrandedItems()
+    }
+
+    // Moves any items without a slot to a new inventory slot
+    private moveStrandedItems() {
+        const moves: MoveItemRequest = []
+        
+        this.items.forEach(item => {
+            if (!this.getSlotOfItem(item)) {
+                moves.push({
+                    slot: this.getNewInventorySlot(),
+                    itemUuid: item.uuid
+                })
+            }
+        })
+
+        if (moves.size() > 0) {
+            ClientNet.requestServer(
+                MoveItemsPacket,
+                moves
+            )
+        }
+    }
+
+    getNewInventorySlot() {
+        return `inventory_${HttpService.GenerateGUID(false)}`
+    }
+
+    getInventorySlots() {
+        const slots: string[] = []
+
+        this.slots.forEach((_, k) => {
+            if (k.sub(1, "inventory".size()) === "inventory") {
+                slots.push(k)
+            }
+        })
+
+        return slots
+    }
+
+    getItems() {
+        const items: ItemInstance[] = []
+
+        this.items.forEach((item) => {
+            items.push(item)
+        })
+
+        return items
+    }
+
+    getStrandedItems() {
+        const items: ItemInstance[] = []
+
+        this.items.forEach((item) => {
+            if (!this.getSlotOfItem(item)) items.push(item)
+        })
+
+        return items
     }
 
     getItem(uuid: string) {
@@ -94,6 +151,10 @@ export class InventoryManager {
                 warn(`[C] Equip request for ${slot} rejected: ${response.error}`);
             }
         });
+    }
+
+    getEquippedSlot() {
+        return this.equippedSlot
     }
 }
 
