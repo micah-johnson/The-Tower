@@ -1,11 +1,11 @@
 import { useEffect, useState } from "@rbxts/react";
-import { inventoryManager } from "../inventory/manager";
+import { playerInventory } from "../inventory";
 
 export function useInventoryVersion() {
-  const [v, setV] = useState(inventoryManager.getVersion());
+  const [v, setV] = useState(playerInventory.getVersion());
   
   useEffect(() => {
-    const conn = inventoryManager.changed.Connect(setV);
+    const conn = playerInventory.changed.Connect(setV);
     return () => { conn.Disconnect() };
   }, []);
 

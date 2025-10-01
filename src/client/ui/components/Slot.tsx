@@ -6,12 +6,12 @@ import { itemRepository } from "../../../shared/items/repository";
 import { useTweenableState } from "../../hooks/tween";
 import { keyCodeToString } from "../../../shared/utils/keycode";
 import { ItemViewport } from "./ItemViewport";
-import { inventoryManager } from "../../inventory/manager";
 import { ItemTooltip } from "./ItemTooltip";
 import { useItemDragging } from "../context/ItemDraggingContext";
 import { ClientNet } from "../../network";
-import { MoveItemRequest, MoveItemsPacket, PayloadOf } from "../../../shared/network";
+import { EquipItemPacket, MoveItemRequest, MoveItemsPacket, PayloadOf } from "../../../shared/network";
 import { useInventoryVersion } from "../../hooks/inventory";
+import { playerInventory } from "../../inventory";
 
 
 export function Slot(props: {
@@ -23,8 +23,8 @@ export function Slot(props: {
     onMouseUp?: (position: Vector2) => void;
     forwardRef?: MutableRefObject<Frame | undefined>;
 }) {
-    const item = inventoryManager.getItemInSlot(props.slotId)
-    const selected = inventoryManager.getEquippedSlot() === props.slotId
+    const item = playerInventory.getItemInSlot(props.slotId)
+    const selected = playerInventory.getEquippedSlot() === props.slotId
 
     const itemDef = useMemo(() => item ? itemRepository.get(item.id) : undefined, [item])
     
@@ -42,8 +42,22 @@ export function Slot(props: {
 
     const [transparency, setTransparency] = useTweenableState(ref, "BackgroundTransparency", 0.9, new TweenInfo(0.05, Enum.EasingStyle.Linear))
 
-    function handleClick() {
-        inventoryManager.equipSlot(props.slotId)
+    function handleActivate() {
+        if (selected) {
+            ClientNet.requestServer(
+                EquipItemPacket,
+                {
+                    slot: undefined
+                }
+            )
+        } else {
+            ClientNet.requestServer(
+                EquipItemPacket,
+                {
+                    slot: props.slotId
+                }
+            )
+        }
     }
 
     function handleMouseDown(position: Vector2) {
@@ -105,7 +119,7 @@ export function Slot(props: {
 
         const connection = UserInputService.InputBegan.Connect(input => {
             if (input.UserInputType === Enum.UserInputType.Keyboard && input.KeyCode === props.keybind) {
-                props.onActivated?.()
+                handleActivate()
             }
         });
 
@@ -181,7 +195,7 @@ export function Slot(props: {
                 Text=""
                 Size={UDim2.fromScale(1, 1)}
                 Event={{
-                    MouseButton1Click: (_rbx) => handleClick(),
+                    MouseButton1Click: (_rbx) => handleActivate(),
                     MouseButton1Down: (_rbx, x, y) => handleMouseDown(new Vector2(x, y)),
                     MouseButton1Up: (_rbx, x, y) => handleMouseUp(new Vector2(x,y))
                 }}

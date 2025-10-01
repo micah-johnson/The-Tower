@@ -10,7 +10,7 @@ const PROFILE_TEMPLATE: {
 } = {
     cum: 0,
     inventory: {
-        version: 0,
+        _version: 0,
         slots: {},
         items: {},
     },

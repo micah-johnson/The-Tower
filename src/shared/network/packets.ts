@@ -1,6 +1,10 @@
 import { t } from "@rbxts/t";
 import { ItemInstance } from "../items";
 
+export const Txid = {
+    
+};
+
 export const PacketDirection = {
     ClientToServerEvent: 0,
     ServerToClientEvent: 1,
@@ -28,11 +32,14 @@ export type PacketClass<P, R = void, D extends PacketDirection = PacketDirection
 export type PayloadOf<C> = C extends PacketClass<infer P, any, any> ? P : never;
 export type ResponseOf<C> = C extends PacketClass<any, infer R, any> ? R : never;
 
+const transactionals = new WeakSet<PacketClass<any, any, PacketDirection>>();
+
 export type PacketCtx = {
     opcode: number;
     direction: PacketDirection;
     ctor: PacketClass<any, any, PacketDirection>;
     validator?: PacketValidator;
+    transactional?: boolean;
 };
 
 const registryByOpcode = new Map<number, PacketCtx>();
@@ -61,6 +68,7 @@ function registerPacket<C extends PacketClass<any, any>>(
         direction,
         ctor: ctor as PacketClass<any, any>,
         validator,
+        transactional: transactionals.has(ctor as PacketClass<any, any>),
     };
 
     registryByOpcode.set(opcode, meta);
@@ -89,6 +97,13 @@ export function Opcode<D extends PacketDirection, P = unknown>(opcode: number, d
         registerPacket(ctor as PacketClass<any, any, PacketDirection>, opcode, direction, options?.validator as PacketValidator);
         return ctor;
     };
+}
+
+export function Transactional() {
+    return <C extends PacketClass<any, any, PacketDirection>>(ctor: C) => {
+        transactionals.add(ctor as PacketClass<any, any, PacketDirection>);
+        return ctor;
+    }
 }
 
 export function assertPacketDirection<C extends PacketClass<any, any, PacketDirection>, D extends PacketDirection>(
@@ -134,9 +149,10 @@ export function validatePacketPayload(meta: PacketCtx, payload: unknown) {
 }
 
 export interface InventorySnapshot {
-    version: number;
+    _version: number;
     slots: Record<string, string | undefined>;
     items: Record<string, ItemInstance>;
+    equippedSlot?: string;
 }
 
 const tHeartbeatPayload = t.strictInterface({
@@ -160,7 +176,7 @@ export interface MoveItemResponse {
 }
 
 const tEquipItemRequest = t.strictInterface({
-    itemUuid: t.string
+    slot: t.optional(t.string)
 })
 
 export type EquipItemRequest = t.static<typeof tEquipItemRequest>
@@ -168,6 +184,16 @@ export type EquipItemRequest = t.static<typeof tEquipItemRequest>
 export interface EquipItemResponse {
     ok: boolean;
     error?: string;
+}
+
+const tSwingHandRequest = t.strictInterface({
+
+});
+
+export type UseItemRequest = t.static<typeof tSwingHandRequest> 
+
+export interface UseItemResponse {
+
 }
 
 @Opcode(0x01, PacketDirection.ClientToServerEvent, { validator: tHeartbeatPayload })

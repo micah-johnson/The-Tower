@@ -14,6 +14,7 @@ import {
 import { ServerNet } from "../network";
 import type { PlayerProfile } from "../profiles";
 import { getItemTool } from "../../shared/items/util";
+import { PlayerInventory } from "../../shared/inventory";
 
 const ALLOWED_SLOTS = ["hotbar_1", "hotbar_2", "hotbar_3", "hotbar_4", "hotbar_5", "hotbar_6", "hotbar_7", "hotbar_8", "hotbar_9", "hotbar_0"] as const;
 const ALLOWED_SLOT_SET = new Set<string>(ALLOWED_SLOTS);
@@ -24,7 +25,7 @@ interface HeartbeatState {
     roundTripMs: number;
 }
 
-const playerInventories = new Map<number, PlayerInventory>();
+const playerInventories = new Map<number, ServerPlayerInventory>();
 const heartbeatState = new Map<number, HeartbeatState>();
 
 function cloneItem(item: ItemInstance): ItemInstance {
@@ -73,7 +74,7 @@ function createDefaultInventory(): InventorySnapshot {
     }
 
     return {
-        version: 1,
+        _version: 1,
         slots,
         items,
     };
@@ -87,13 +88,10 @@ function isEmptyRecord(record: Record<string, unknown>) {
     return true;
 }
 
-class PlayerInventory {
-    private readonly items = new Map<string, ItemInstance>();
-    private readonly slotAssignments = new Map<string, string>();
-    private readonly slotNames = new Set<string>();
-    private version = 0;
-
+class ServerPlayerInventory extends PlayerInventory {
     constructor(private readonly player: Player, private readonly profile: PlayerProfile) {
+        super()
+
         const stored = profile.Data.inventory ?? createDefaultInventory();
         if (!stored || isEmptyRecord(stored.items)) {
             this.loadSnapshot(createDefaultInventory());
@@ -106,26 +104,21 @@ class PlayerInventory {
     }
 
     move(slot: string, itemUuid: string, skipSync?: boolean): MoveItemResponse {
-        // if (!isValidSlot(slot)) {
-        //     return { ok: false, error: "Invalid slot" };
-        // }
-
         const normalizedItemUuid = itemUuid === "" ? undefined : itemUuid;
-        this.ensureSlotTracked(slot);
 
         if (normalizedItemUuid !== undefined && !this.items.has(normalizedItemUuid)) {
             return { ok: false, error: "Item does not belong to the player" };
         }
 
-        const current = this.slotAssignments.get(slot);
+        const current = this.slots.getByKey(slot);
 
         if (normalizedItemUuid === undefined) {
             if (!current) {
                 return { ok: true };
             }
 
-            this.slotAssignments.delete(slot);
-            this.bumpAndSync();
+            this.slots.deleteByKey(slot);
+            if (!skipSync) this.bumpAndSync();
             return { ok: true };
         }
 
@@ -134,18 +127,17 @@ class PlayerInventory {
         }
 
         const displacedSlots: string[] = [];
-        for (const [slotName, uuid] of this.slotAssignments) {
+        this.slots.forEach((uuid, slotId) => {
             if (uuid === normalizedItemUuid) {
-                displacedSlots.push(slotName);
+                displacedSlots.push(slotId);
             }
-        }
+        })
 
         for (const displaced of displacedSlots) {
-            this.slotAssignments.delete(displaced);
-            this.ensureSlotTracked(displaced);
+            this.slots.deleteByKey(displaced);
         }
 
-        this.slotAssignments.set(slot, normalizedItemUuid);
+        this.slots.set(slot, normalizedItemUuid);
         if (!skipSync) this.bumpAndSync();
         return { ok: true };
     }
@@ -164,7 +156,7 @@ class PlayerInventory {
         this.profile.Data.inventory = this.toSnapshot();
     }
 
-    equip(itemUuid: string): EquipItemResponse {
+    syncEquippedItem() {
         if (!this.player.Character) {
             return {
                 ok: false,
@@ -172,7 +164,9 @@ class PlayerInventory {
             }
         }
 
-        if (itemUuid === "") { // Equipped null item
+        const slot = this.getEquippedSlot()
+
+        if (slot === undefined) { // Equipped no slot
             // Unequip all tools
             for (const child of this.player.Character.GetChildren()) {
                 if (child.IsA("Tool")) {
@@ -185,13 +179,18 @@ class PlayerInventory {
             }
         }
 
-
-        const item = this.items.get(itemUuid)
+        const item = this.getItemInSlot(slot)
 
         if (!item) {
+            // Unequip all tools
+            for (const child of this.player.Character.GetChildren()) {
+                if (child.IsA("Tool")) {
+                    child.Destroy()
+                }
+            }
+
             return {
-                ok: false,
-                error: "Item does not belong to player!"
+                ok: true
             }
         }
 
@@ -226,37 +225,43 @@ class PlayerInventory {
         }
     }
 
+    equip(slot: string | undefined): EquipItemResponse {
+        this.equippedSlot = slot
+        this.bumpAndSync()
+
+        return this.syncEquippedItem()
+    }
+
     private loadSnapshot(snapshot: InventorySnapshot) {
         this.items.clear();
-        this.slotAssignments.clear();
-        this.slotNames.clear();
+        this.slots.clear();
+        this.slots.clear();
 
-        this.version = snapshot.version ?? 0;
-
-        for (const slot of ALLOWED_SLOTS) {
-            this.slotNames.add(slot);
-        }
+        this._version = snapshot._version ?? 0;
 
         for (const [uuid, item] of pairs(snapshot.items)) {
             this.items.set(uuid, cloneItem(item));
         }
 
         for (const [slot, uuid] of pairs(snapshot.slots)) {
-            this.slotNames.add(slot);
             if (uuid !== undefined) {
-                this.slotAssignments.set(slot, uuid);
+                this.slots.set(slot, uuid);
             }
         }
     }
 
-    private ensureSlotTracked(slot: string) {
-        if (!this.slotNames.has(slot)) {
-            this.slotNames.add(slot);
-        }
+    private moveStrandedItems() {
+        this.items.forEach(item => {
+            if (!this.getSlotOfItem(item)) {
+                this.move(this.getNewInventorySlot(), item.uuid)
+            }
+        })
     }
 
     bumpAndSync() {
-        this.version += 1;
+        this._version += 1;
+        this.moveStrandedItems()
+        this.syncEquippedItem()
         this.syncToClient();
     }
 
@@ -309,14 +314,15 @@ class PlayerInventory {
         }
 
         const slots: Record<string, string | undefined> = {};
-        for (const slot of this.slotNames) {
-            slots[slot] = this.slotAssignments.get(slot);
-        }
+        this.slots.forEach((_, slotId) => {
+            slots[slotId] = this.slots.getByKey(slotId);
+        })
 
         return {
-            version: this.version,
+            _version: this._version,
             slots,
             items,
+            equippedSlot: this.equippedSlot
         };
     }
 }
@@ -327,7 +333,7 @@ export function bindPlayerInventory(player: Player, profile: PlayerProfile) {
         existing.dispose();
     }
 
-    const inventory = new PlayerInventory(player, profile);
+    const inventory = new ServerPlayerInventory(player, profile);
     playerInventories.set(player.UserId, inventory);
 }
 
@@ -376,7 +382,7 @@ export function handleEquipRequest(player: Player, payload: EquipItemRequest): E
         };
     }
 
-    return inventory.equip(payload.itemUuid)
+    return inventory.equip(payload.slot)
 }
 
 export function updateHeartbeat(player: Player, state: HeartbeatState) {

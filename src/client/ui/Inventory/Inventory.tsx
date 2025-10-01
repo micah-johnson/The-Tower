@@ -2,7 +2,6 @@ import React, { useState } from "@rbxts/react";
 import { Slot } from "../components/Slot";
 import { Toggleable } from "../components/Toggleable";
 import { useInventoryVersion } from "../../hooks/inventory";
-import { inventoryManager } from "../../inventory/manager";
 import { useItemDragging } from "../context/ItemDraggingContext";
 import { ClientNet } from "../../network";
 import { MoveItemsPacket } from "../../../shared/network";
@@ -10,6 +9,7 @@ import { Divider } from "../components/Divider";
 import { TextInput } from "../components/interaction/TextInput";
 import { itemRepository } from "../../../shared/items/repository";
 import { getItemKeywords } from "../../../shared/items/util";
+import { playerInventory } from "../../inventory";
 
 export function Inventory() {
     useInventoryVersion() // Subscribe to inventory changes
@@ -23,17 +23,17 @@ export function Inventory() {
             task.spawn(() => {
                 ClientNet.requestServer(MoveItemsPacket, [{
                     itemUuid: dragState.itemUuid,
-                    slot: inventoryManager.getNewInventorySlot()
+                    slot: playerInventory.getNewInventorySlot()
                 }])
             })
         }
     }
 
-    let slots = inventoryManager.getInventorySlots()
+    let slots = playerInventory.getInventorySlots()
 
     if (search) {
         slots = slots.filter(slot => {
-            const item = inventoryManager.getItemInSlot(slot)
+            const item = playerInventory.getItemInSlot(slot)
 
             if (!item) return false
 

@@ -1,11 +1,11 @@
 import { InventorySnapshot, InventoryUpdatePacket } from "../../../shared/network";
-import { inventoryManager } from "../../inventory/manager";
+import { playerInventory } from "../../inventory";
 import { ClientEventHandler } from "../decorators";
 
 class InventoryHandlers {
     @ClientEventHandler(InventoryUpdatePacket)
     public static onInventoryUpdate(snapshot: InventorySnapshot) {
-        inventoryManager.applySnapshot(snapshot);
+        playerInventory.applySnapshot(snapshot);
     }
 }
 

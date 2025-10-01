@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "@rbxts/react"
 import { ItemViewport } from "./ItemViewport"
-import { inventoryManager } from "../../inventory/manager"
 import { GuiService, UserInputService } from "@rbxts/services"
 import { RARITY_COLORS } from "../../../shared/consts/colors"
 import { itemRepository } from "../../../shared/items/repository"
 import { useTweenableState } from "../../hooks/tween"
 import { useItemDragging } from "../context/ItemDraggingContext"
+import { playerInventory } from "../../inventory"
 
 function adjustForInset(position: Vector2) {
     const [inset] = GuiService.GetGuiInset();
@@ -62,7 +62,7 @@ export function ItemDragGhost(){
         }
     }, [dragState])
 
-    const item = dragState ? inventoryManager.getItem(dragState.itemUuid) : undefined
+    const item = dragState ? playerInventory.getItem(dragState.itemUuid) : undefined
 
     const screenPosition = new Vector2(position.X - 25, position.Y + 25);
 
