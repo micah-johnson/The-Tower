@@ -1,6 +1,6 @@
-import { EquipItemPacket, EquipItemRequest, EquipItemResponse, MoveItemsPacket, MoveItemRequest, MoveItemResponse } from "../../../shared/network";
+import { EquipItemPacket, EquipItemRequest, EquipItemResponse, MoveItemsPacket, MoveItemRequest, MoveItemResponse, DropItemPacket } from "../../../shared/network";
 import { ServerRequestHandler } from "../decorators";
-import { handleEquipRequest, handleMoveRequest } from "../../inventory/service";
+import { handleDropRequest, handleEquipRequest, handleMoveRequest } from "../../inventory/service";
 
 class ItemHandlers {
     @ServerRequestHandler(MoveItemsPacket)
@@ -11,6 +11,11 @@ class ItemHandlers {
     @ServerRequestHandler(EquipItemPacket)
     public static onEquipItem(player: Player, payload: EquipItemRequest): EquipItemResponse {
         return handleEquipRequest(player, payload)
+    }
+
+    @ServerRequestHandler(DropItemPacket)
+    public static onDropItem(player: Player) {
+        return handleDropRequest(player)
     }
 }
 

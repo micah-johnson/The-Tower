@@ -210,3 +210,6 @@ export class MoveItemsPacket extends Packet<MoveItemRequest, MoveItemResponse> {
 
 @Opcode(0x05, PacketDirection.ClientToServerRequest, { validator: tEquipItemRequest })
 export class EquipItemPacket extends Packet<EquipItemRequest, EquipItemResponse> {}
+
+@Opcode(0x06, PacketDirection.ClientToServerRequest) 
+export class DropItemPacket extends Packet {}

@@ -1,4 +1,4 @@
-import { ReplicatedStorage } from "@rbxts/services";
+import { HttpService, ReplicatedStorage } from "@rbxts/services";
 import { ItemDef, ItemInstance } from ".";
 import { itemRepository } from "./repository";
 

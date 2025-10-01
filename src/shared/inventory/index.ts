@@ -68,4 +68,8 @@ export abstract class PlayerInventory {
     getEquippedSlot() {
         return this.equippedSlot
     }
+
+    getEquippedItem() {
+        return this.equippedSlot ? this.getItemInSlot(this.equippedSlot) : undefined
+    }
 }

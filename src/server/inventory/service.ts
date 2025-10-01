@@ -13,11 +13,8 @@ import {
 } from "../../shared/network";
 import { ServerNet } from "../network";
 import type { PlayerProfile } from "../profiles";
-import { getItemTool } from "../../shared/items/util";
 import { PlayerInventory } from "../../shared/inventory";
-
-const ALLOWED_SLOTS = ["hotbar_1", "hotbar_2", "hotbar_3", "hotbar_4", "hotbar_5", "hotbar_6", "hotbar_7", "hotbar_8", "hotbar_9", "hotbar_0"] as const;
-const ALLOWED_SLOT_SET = new Set<string>(ALLOWED_SLOTS);
+import { createItemToolInstance } from "../tools";
 
 interface HeartbeatState {
     clientTimestamp: number;
@@ -25,7 +22,7 @@ interface HeartbeatState {
     roundTripMs: number;
 }
 
-const playerInventories = new Map<number, ServerPlayerInventory>();
+export const playerInventories = new Map<number, ServerPlayerInventory>();
 const heartbeatState = new Map<number, HeartbeatState>();
 
 function cloneItem(item: ItemInstance): ItemInstance {
@@ -55,10 +52,6 @@ function createItemInstance(defId: string, stack = 1): ItemInstance | undefined 
 function createDefaultInventory(): InventorySnapshot {
     const items: Record<string, ItemInstance> = {};
     const slots: Record<string, string | undefined> = {};
-
-    for (const slot of ALLOWED_SLOTS) {
-        slots[slot] = undefined;
-    }
 
     const starterWeapon = createItemInstance("sword", 1);
     const debugMythic = createItemInstance("rape_sword", 1);
@@ -156,6 +149,22 @@ class ServerPlayerInventory extends PlayerInventory {
         this.profile.Data.inventory = this.toSnapshot();
     }
 
+    drop() {
+        const equipped = this.getEquippedItem()
+
+        if (!equipped) return;
+
+        const tool = this.player.Character?.FindFirstChild(equipped.uuid)
+
+        if (!tool) return;
+
+        this.removeItem(equipped)
+        
+        tool.Parent = game.Workspace
+
+        this.bumpAndSync()
+    }
+
     syncEquippedItem() {
         if (!this.player.Character) {
             return {
@@ -194,19 +203,19 @@ class ServerPlayerInventory extends PlayerInventory {
             }
         }
 
-        const tool = getItemTool(item)
+        const tool = createItemToolInstance(item)
 
         if (!tool) {
             return {
                 ok: false,
-                error: "Unable to find tool instance."
+                error: "Unable to create tool instance."
             }
         }
 
         // Handle equipped tools
         for (const child of this.player.Character.GetChildren()) {
             if (child.IsA("Tool")) {
-                if (child.Name === item.id) { // If tool already equipped, return
+                if (child.GetAttribute("uuid") === item.uuid) { // If tool already equipped, return
                     return {
                         ok: true
                     }
@@ -263,6 +272,16 @@ class ServerPlayerInventory extends PlayerInventory {
         this.moveStrandedItems()
         this.syncEquippedItem()
         this.syncToClient();
+    }
+
+    addItem(item: ItemInstance) {
+        this.items.set(item.uuid, item)
+
+        this.bumpAndSync()
+    }
+
+    removeItem(item: ItemInstance) {
+        this.items.delete(item.uuid);
     }
 
     private ensureDebugItems() {
@@ -383,6 +402,18 @@ export function handleEquipRequest(player: Player, payload: EquipItemRequest): E
     }
 
     return inventory.equip(payload.slot)
+}
+
+export function handleDropRequest(player: Player) {
+    const inventory = playerInventories.get(player.UserId);
+    if (!inventory) {
+        return {
+            ok: false,
+            error: "Inventory not ready",
+        };
+    }
+
+    return inventory.drop();
 }
 
 export function updateHeartbeat(player: Player, state: HeartbeatState) {

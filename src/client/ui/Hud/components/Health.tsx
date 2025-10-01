@@ -51,7 +51,7 @@ export function Health() {
                     }
                 />
             </frame>
-            <textlabel FontFace={Font.fromName("Balthazar")} TextSize={16} Position={UDim2.fromScale(0.5, 0.5)} AnchorPoint={new Vector2(0.5, 0.5)} TextColor3={Color3.fromHex("#f5f5f5")} Text={`${health} / ${maxHealth}`} />
+            <textlabel FontFace={Font.fromName("Balthazar")} TextSize={16} Position={UDim2.fromScale(0.5, 0.5)} AnchorPoint={new Vector2(0.5, 0.5)} TextColor3={Color3.fromHex("#f5f5f5")} Text={`${math.round(health)} / ${math.round(maxHealth)}`} />
         </frame>
     )
 }
