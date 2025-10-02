@@ -27,7 +27,7 @@ export function useTweenableState<T, K extends TweenableSet<NonNullable<T>>> (
             properties.set(property as K, value)
         } else {
             (property as K[]).forEach(p => {
-                properties.set(property as K, value)
+                properties.set(p, value)
             })
         }
 
