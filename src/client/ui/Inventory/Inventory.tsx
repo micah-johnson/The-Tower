@@ -32,6 +32,8 @@ export function Inventory() {
     let slots = playerInventory.getInventorySlots()
 
     if (search) {
+        const searchTerm = search.lower();
+
         slots = slots.filter(slot => {
             const item = playerInventory.getItemInSlot(slot)
 
@@ -41,7 +43,10 @@ export function Inventory() {
 
             if (!itemDef) return false;
 
-            return getItemKeywords(itemDef).match(search.lower()).size() > 0
+            const keywords = getItemKeywords(itemDef)
+            const [matchStart] = keywords.find(searchTerm, 1, true)
+
+            return matchStart !== undefined
         })
     }
 

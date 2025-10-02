@@ -142,17 +142,36 @@ export class ServerInventoryState extends InventoryState {
     drop() {
         const equipped = this.getEquippedItem()
 
-        if (!equipped) return;
+        if (!equipped) {
+            return {
+                ok: false,
+                error: "Nothing equipped",
+            } as const;
+        }
 
         const tool = this.player.Character?.FindFirstChild(equipped.uuid)
 
-        if (!tool) return;
+        const slotId = this.getSlotOfItem(equipped)
 
         this.removeItem(equipped)
-        
-        tool.Parent = game.Workspace
+
+        if (slotId) {
+            this.slots.deleteByKey(slotId)
+        }
+
+        if (this.equippedSlot === slotId) {
+            this.equippedSlot = undefined
+        }
+
+        if (tool) {
+            tool.Parent = game.Workspace
+        }
 
         this.bumpAndSync()
+
+        return {
+            ok: true,
+        } as const;
     }
 
     equip(slot: string | undefined): EquipItemResponse {

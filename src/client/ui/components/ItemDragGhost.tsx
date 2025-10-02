@@ -57,7 +57,7 @@ export function ItemDragGhost(){
 
             return () => {
                 moveConn.Disconnect();
-                upConn
+                upConn.Disconnect();
             };
         }
     }, [dragState])
