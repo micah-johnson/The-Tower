@@ -1,5 +1,5 @@
 import { HttpService, RunService } from "@rbxts/services";
-import { ItemInstance } from "../../shared/items";
+import { ItemEffectType, ItemInstance } from "../../shared/items";
 import { itemRepository } from "../../shared/items/repository";
 import {
     MoveItemsRequest as MoveItemsRequest,
@@ -10,11 +10,13 @@ import {
     PacketDirection,
     EquipItemRequest,
     EquipItemResponse,
+    DropItemResponse,
 } from "../../shared/network";
 import { ServerNet } from "../network";
 import type { PlayerProfile } from "../profiles";
 import { InventoryState } from "../../shared/inventory";
-import { createItemToolInstance } from "../tools";
+import type { ServerDamageCoordinator } from "../combat/damageCoordinator";
+import type { ServerPlayerState } from "../player";
 
 function cloneItem(item: ItemInstance): ItemInstance {
     return {
@@ -22,6 +24,7 @@ function cloneItem(item: ItemInstance): ItemInstance {
         id: item.id,
         stack: item.stack,
         attr: item.attr.map((attr) => ({ ...attr })),
+        effects: item.effects?.map(effect => ({ ...effect })),
     };
 }
 
@@ -35,7 +38,8 @@ function createItemInstance(defId: string, stack = 1): ItemInstance | undefined 
         uuid: HttpService.GenerateGUID(false),
         id: def.id,
         stack,
-        attr: []
+        attr: [],
+        effects: def.effects?.map(effect => ({ ...effect })),
     };
 }
 
@@ -72,7 +76,14 @@ function isEmptyRecord(record: Record<string, unknown>) {
 }
 
 export class ServerInventoryState extends InventoryState {
-    constructor(private readonly player: Player, private readonly profile: PlayerProfile) {
+    private ownerState?: ServerPlayerState;
+    private equippedModifierDisposers: (() => void)[] = [];
+
+    constructor(
+        private readonly player: Player,
+        private readonly profile: PlayerProfile,
+        private readonly damageCoordinator: ServerDamageCoordinator,
+    ) {
         super()
 
         const stored = profile.Data.inventory ?? createDefaultInventory();
@@ -84,6 +95,11 @@ export class ServerInventoryState extends InventoryState {
 
         this.ensureDebugItems();
         this.bumpAndSync();
+    }
+
+    attachOwner(owner: ServerPlayerState) {
+        this.ownerState = owner;
+        this.refreshEquippedModifiers();
     }
 
     move(slot: string, itemUuid: string, skipSync?: boolean): MoveItemResponse {
@@ -136,17 +152,19 @@ export class ServerInventoryState extends InventoryState {
     }
 
     dispose() {
+        this.clearEquippedModifiers()
         this.profile.Data.inventory = this.toSnapshot();
+        super.dispose()
     }
 
-    drop() {
+    drop(): DropItemResponse {
         const equipped = this.getEquippedItem()
 
         if (!equipped) {
             return {
                 ok: false,
                 error: "Nothing equipped",
-            } as const;
+            }
         }
 
         const tool = this.player.Character?.FindFirstChild(equipped.uuid)
@@ -161,6 +179,7 @@ export class ServerInventoryState extends InventoryState {
 
         if (this.equippedSlot === slotId) {
             this.equippedSlot = undefined
+            this.refreshEquippedModifiers()
         }
 
         if (tool) {
@@ -171,11 +190,12 @@ export class ServerInventoryState extends InventoryState {
 
         return {
             ok: true,
-        } as const;
+        }
     }
 
     equip(slot: string | undefined): EquipItemResponse {
         this.equippedSlot = slot
+        this.refreshEquippedModifiers()
         this.bumpAndSync()
 
         return {
@@ -266,6 +286,62 @@ export class ServerInventoryState extends InventoryState {
             }
         }
         return undefined;
+    }
+
+    private clearEquippedModifiers() {
+        for (const dispose of this.equippedModifierDisposers) {
+            dispose();
+        }
+        this.equippedModifierDisposers = [];
+    }
+
+    private refreshEquippedModifiers() {
+        this.clearEquippedModifiers();
+
+        const owner = this.ownerState;
+        if (!owner) {
+            return;
+        }
+
+        const equipped = this.getEquippedItem();
+        if (!equipped) {
+            return;
+        }
+
+        const definition = itemRepository.get(equipped.id);
+        const effects = equipped.effects ?? definition?.effects;
+        if (!effects) {
+            return;
+        }
+
+        for (const effect of effects) {
+            if (effect.type === ItemEffectType.LIFESTEAL) {
+                const dispose = this.damageCoordinator.postHit.register({
+                    priority: 100,
+                    apply(ctx) {
+                        if (!ctx.applied) {
+                            return ctx;
+                        }
+
+                        if (ctx.attacker !== owner) {
+                            return ctx;
+                        }
+
+                        const humanoid = owner.player.Character?.FindFirstChildOfClass("Humanoid") as Humanoid | undefined;
+                        if (!humanoid) {
+                            return ctx;
+                        }
+
+                        const heal = ctx.finalDamage * effect.amount;
+                        humanoid.Health = math.clamp(humanoid.Health + heal, 0, humanoid.MaxHealth);
+
+                        return ctx;
+                    },
+                });
+
+                this.equippedModifierDisposers.push(dispose);
+            }
+        }
     }
 
     private toSnapshot(): InventorySnapshot {

@@ -1,4 +1,4 @@
-import { Attribute, ItemDef, ItemRarity, ItemSubType, ItemType, tItemDef } from ".";
+import { Attribute, ItemDef, ItemEffectType, ItemRarity, ItemSubType, ItemType, tItemDef } from ".";
 import { RARITY_COLORS } from "../consts/colors";
 export class ItemRepository {
     private readonly itemDefs = new Map<string, ItemDef>();
@@ -41,6 +41,10 @@ export const itemRepository = new ItemRepository([{
         type: "additive",
         value: 1000
     }],
+    effects: [{
+        type: ItemEffectType.LIFESTEAL,
+        amount: 0.1,
+    }],
     maxStack: 1,
     transferable: false,
     durability: -1,
@@ -63,6 +67,7 @@ export const itemRepository = new ItemRepository([{
     maxStack: 1,
     transferable: false,
     durability: -1,
+    effects: [],
 }, {
     id: "rare_sword",
     name: "Sword",
@@ -82,6 +87,7 @@ export const itemRepository = new ItemRepository([{
     maxStack: 1,
     transferable: false,
     durability: -1,
+    effects: [],
 }, {
     id: "epic_sword",
     name: "Sword",
@@ -101,6 +107,7 @@ export const itemRepository = new ItemRepository([{
     maxStack: 1,
     transferable: false,
     durability: -1,
+    effects: [],
 }, {
     id: "legendary_sword",
     name: "Sword",
@@ -120,4 +127,5 @@ export const itemRepository = new ItemRepository([{
     maxStack: 1,
     transferable: false,
     durability: -1,
+    effects: [],
 }]);

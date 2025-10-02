@@ -1,14 +1,17 @@
 import { ServerPlayerState } from ".";
 import { Signal } from "../../shared/utils/signal";
 import { PlayerProfile } from "../profiles";
+import type { ServerDamageCoordinator } from "../combat/damageCoordinator";
 
 export class PlayerRepository {
     Added = new Signal<[ServerPlayerState]>()
 
     private readonly players = new Map<number, ServerPlayerState>();
 
+    constructor(private readonly damageCoordinator: ServerDamageCoordinator) {}
+
     bind(player: Player, profile: PlayerProfile) {
-        const playerState = new ServerPlayerState(player, profile)
+        const playerState = new ServerPlayerState(player, profile, this.damageCoordinator)
 
         this.players.set(player.UserId, playerState)
 
@@ -31,5 +34,3 @@ export class PlayerRepository {
         return this.players.get(player.UserId)
     }
 }
-
-export const playerRepository = new PlayerRepository()

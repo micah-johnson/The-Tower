@@ -1,5 +1,4 @@
-import { combatHandler } from "../combat/handler";
-import { playerRepository } from "../player/repository";
+import { combatHandler, playerRepository } from "../container";
 import { createItemToolInstance } from "../tools";
 
 // Equipped Item Handler
@@ -30,7 +29,7 @@ playerRepository.Added.Connect(player => {
             }
         }
 
-        const tool = createItemToolInstance(item)
+        const tool = createItemToolInstance(item, combatHandler)
 
         if (!tool) {
             return {

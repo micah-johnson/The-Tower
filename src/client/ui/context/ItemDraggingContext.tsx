@@ -26,7 +26,7 @@ export function ItemProvider(props: { children: ReactNode }) {
 
 export function useItemDragging() {
   const ctx = useContext(ItemDraggingContext);
-  if (!ctx) error("useInventory must be used within InventoryProvider");
+  if (!ctx) error("useItemDragging must be used within ItemProvider");
 
   return ctx;
 }

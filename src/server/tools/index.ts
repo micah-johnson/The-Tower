@@ -1,7 +1,7 @@
 import { ItemInstance, ItemType } from "../../shared/items"
 import { itemRepository } from "../../shared/items/repository"
 import { getItemTool } from "../../shared/items/util"
-import { combatHandler } from "../combat/handler"
+import type { CombatHandler } from "../combat/handler"
 
 class ToolRegistry {
     private items = new Map<string, ItemInstance>()
@@ -20,7 +20,7 @@ class ToolRegistry {
 }
 
 // Handles state of all items present within the workspace (equipped by player, dropped on ground, in chest)
-export function createItemToolInstance(item: ItemInstance) {
+export function createItemToolInstance(item: ItemInstance, combatHandler: CombatHandler) {
     const tool = getItemTool(item)
 
     if (!tool) return

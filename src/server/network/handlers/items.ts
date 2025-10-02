@@ -1,5 +1,5 @@
-import { EquipItemPacket, EquipItemRequest, EquipItemResponse, MoveItemsPacket, MoveItemsRequest, MoveItemResponse, DropItemPacket } from "../../../shared/network";
-import { playerRepository } from "../../player/repository";
+import { EquipItemPacket, EquipItemRequest, EquipItemResponse, MoveItemsPacket, MoveItemsRequest, MoveItemResponse, DropItemPacket, DropItemResponse } from "../../../shared/network";
+import { playerRepository } from "../../container";
 import { ServerRequestHandler } from "../decorators";
 class ItemHandlers {
     @ServerRequestHandler(MoveItemsPacket)
@@ -13,7 +13,7 @@ class ItemHandlers {
     }
 
     @ServerRequestHandler(DropItemPacket)
-    public static onDropItem(player: Player) {
+    public static onDropItem(player: Player): DropItemResponse {
         return handleDropRequest(player)
     }
 }
@@ -55,7 +55,7 @@ export function handleEquipRequest(player: Player, payload: EquipItemRequest): E
     return inventory.equip(payload.slot)
 }
 
-export function handleDropRequest(player: Player) {
+export function handleDropRequest(player: Player): DropItemResponse {
     const inventory = playerRepository.getByPlayer(player)?.inventoryState;
     if (!inventory) {
         return {

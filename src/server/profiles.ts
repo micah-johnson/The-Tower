@@ -2,7 +2,7 @@ import ProfileStore from "@rbxts/profile-store";
 import { Players } from "@rbxts/services";
 import { ItemInstance } from "../shared/items";
 import { InventorySnapshot } from "../shared/network";
-import { playerRepository } from "./player/repository";
+import { playerRepository } from "./container";
 
 const PROFILE_TEMPLATE: {
     cum: number,

@@ -75,6 +75,21 @@ export const tAttributeModifier = t.interface({
 
 export type AttributeModifier = t.static<typeof tAttributeModifier>
 
+export const ItemEffectType = {
+  LIFESTEAL: "lifesteal",
+} as const;
+
+const tLifeStealEffect = t.interface({
+  type: t.literal(ItemEffectType.LIFESTEAL),
+  amount: t.number,
+});
+
+export type LifeStealEffect = t.static<typeof tLifeStealEffect>;
+
+export type ItemEffect = LifeStealEffect;
+
+export const tItemEffect = t.union(tLifeStealEffect);
+
 // Item Definition
 // Common item fields (without type/subtype so we can intersect in discriminated union)
 const tItemCommon = t.interface({
@@ -86,6 +101,7 @@ const tItemCommon = t.interface({
   attr: t.array(tAttributeModifier),
   rarity: tItemRarity,
   durability: t.number,
+  effects: t.optional(t.array(tItemEffect)),
 });
 
 // Discriminated union at runtime: (type === X) ⇒ (subtype ∈ SubTypeFor<X>)
@@ -126,7 +142,8 @@ export const tItemInstance = t.interface({
   uuid: t.string,
   id: t.string,
   stack: t.number,
-  attr: t.array(tAttributeModifier)
+  attr: t.array(tAttributeModifier),
+  effects: t.optional(t.array(tItemEffect)),
 })
 
 export type ItemInstance = t.static<typeof tItemInstance>

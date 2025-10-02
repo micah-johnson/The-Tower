@@ -27,4 +27,8 @@ export abstract class State {
     protected addDependencies(states: State[]) {
         states.forEach(s => this.addDependency(s))
     }
+
+    dispose() {
+        this.Changed.DisconnectAll()
+    }
 }

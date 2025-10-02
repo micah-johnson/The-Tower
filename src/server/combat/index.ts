@@ -1,4 +1,5 @@
 import { CombatState } from "../../shared/combat";
+export type { ServerDamageContext } from "./damageCoordinator";
 
 export class ServerCombatState extends CombatState {
     player: Player

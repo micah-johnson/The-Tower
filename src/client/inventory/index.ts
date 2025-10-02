@@ -13,6 +13,7 @@ function cloneItem(item: ItemInstance): ItemInstance {
         id: item.id,
         stack: item.stack,
         attr: item.attr.map((attr) => ({ ...attr })),
+        effects: item.effects?.map(effect => ({ ...effect })),
     };
 }
 

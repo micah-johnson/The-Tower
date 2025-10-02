@@ -196,6 +196,11 @@ export interface UseItemResponse {
 
 }
 
+export interface DropItemResponse {
+    ok: boolean;
+    error?: string;
+}
+
 @Opcode(0x01, PacketDirection.ClientToServerEvent, { validator: tHeartbeatPayload })
 export class HeartbeatPacket extends Packet<HeartbeatPayload> {}
 
@@ -211,8 +216,8 @@ export class MoveItemsPacket extends Packet<MoveItemsRequest, MoveItemResponse> 
 @Opcode(0x05, PacketDirection.ClientToServerRequest, { validator: tEquipItemRequest })
 export class EquipItemPacket extends Packet<EquipItemRequest, EquipItemResponse> {}
 
-@Opcode(0x06, PacketDirection.ClientToServerRequest) 
-export class DropItemPacket extends Packet {}
+@Opcode(0x06, PacketDirection.ClientToServerRequest)
+export class DropItemPacket extends Packet<void, DropItemResponse> {}
 
 @Opcode(0x07, PacketDirection.ClientToServerRequest)
 export class SwingItemPacket extends Packet {}

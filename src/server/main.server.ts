@@ -2,7 +2,7 @@ import { Players, Workspace } from "@rbxts/services";
 import "./network/handlers";
 import "./profiles";
 import { toolRegistry } from "./tools";
-import { playerRepository } from "./player/repository";
+import { playerRepository } from "./container";
 import { Attribute } from "../shared/items";
 
 import "./inventory/handler"

@@ -1,9 +1,16 @@
 import { Players } from "@rbxts/services";
 import { Attribute } from "../../shared/items";
+import type { PlayerRepository } from "../player/repository";
 import { ServerPlayerState } from "../player";
-import { playerRepository } from "../player/repository";
+import type { ServerDamageContext } from "./damageCoordinator";
+import { ServerDamageCoordinator } from "./damageCoordinator";
 
 export class CombatHandler {
+    constructor(
+        private readonly playerRepository: PlayerRepository,
+        private readonly coordinator: ServerDamageCoordinator,
+    ) {}
+
     register(tool: Tool) {
         tool.Equipped.Connect(() => {
             const handle = tool.FindFirstChild("Handle") as Part | undefined
@@ -14,14 +21,14 @@ export class CombatHandler {
 
             if (!owner) return
 
-            const ownerState = playerRepository.getByPlayer(owner)
+            const ownerState = this.playerRepository.getByPlayer(owner)
 
             const touchHandler = handle.Touched.Connect(other => {
                 const victim = getPlayerFromChild(other)
 
                 if (!victim) return;
 
-                const victimState = playerRepository.getByPlayer(victim)
+                const victimState = this.playerRepository.getByPlayer(victim)
 
                 if (!ownerState || !victimState) return;
 
@@ -54,18 +61,25 @@ export class CombatHandler {
     }
 
     handleTouch(attacker: ServerPlayerState, victim: ServerPlayerState) {
-        const humanoid = victim.player.Character?.FindFirstChild("Humanoid") as Humanoid | undefined
+        if (!this.isSwinging(attacker)) return
 
-        if (!humanoid) return
+        if (!this.canAttack(attacker, victim)) return
 
-        if (!this.isSwinging(attacker)) return;
+        const baseDamage = attacker.getAttributeValue(Attribute.DAMAGE)
 
-        if (!this.canAttack(attacker, victim)) return;
+        const context: ServerDamageContext = {
+            attacker,
+            victim,
+            baseDamage,
+            finalDamage: baseDamage,
+            cancelled: false,
+        }
 
-        const damage = attacker.getAttributeValue(Attribute.DAMAGE)
+        const result = this.coordinator.apply(context)
 
-        humanoid.Health -= damage
-        victim.combatState.setLastDamaged(attacker.player, DateTime.now().UnixTimestampMillis)
+        if (result.applied) {
+            victim.combatState.setLastDamaged(attacker.player, DateTime.now().UnixTimestampMillis)
+        }
     }
 }
 
@@ -80,5 +94,3 @@ export function getPlayerFromChild(part: Instance) {
 
     return player
 }
-
-export const combatHandler = new CombatHandler()
