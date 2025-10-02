@@ -1,7 +1,3 @@
-import { playerRepository } from "../../server/player/repository"
-import { InventoryState } from "../inventory"
-import { Attribute, ItemInstance } from "../items"
-import { PlayerState } from "../player"
 import { State } from "../state"
 
 export abstract class CombatState extends State {

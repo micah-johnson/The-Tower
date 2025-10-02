@@ -186,7 +186,6 @@ export class ServerInventoryState extends InventoryState {
     private loadSnapshot(snapshot: InventorySnapshot) {
         this.items.clear();
         this.slots.clear();
-        this.slots.clear();
 
         this.setVersion(snapshot._version)
 
@@ -246,6 +245,7 @@ export class ServerInventoryState extends InventoryState {
             }
 
             this.items.set(created.uuid, created);
+            dirty = true;
         };
 
         ensureItem("rape_sword");

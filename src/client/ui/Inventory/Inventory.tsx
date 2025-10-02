@@ -13,8 +13,7 @@ import { playerInventory } from "../../inventory";
 
 export function Inventory() {
     useInventoryVersion() // Subscribe to inventory changes
-    const { dragState, setDragState } = useItemDragging()
-    const [ visible, setVisible ] = useState()
+    const { dragState } = useItemDragging()
 
     const [ search, setSearch ] = useState("")
 
@@ -53,7 +52,6 @@ export function Inventory() {
     return (
         <Toggleable keybind={Enum.KeyCode.Tab} >
             <frame
-                Visible={visible}
                 key="Inventory" 
                 Size={UDim2.fromOffset(551, 0)}
                 AutomaticSize={Enum.AutomaticSize.Y}
