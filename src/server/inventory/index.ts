@@ -203,7 +203,7 @@ export class ServerInventoryState extends InventoryState {
     private moveStrandedItems() {
         this.items.forEach(item => {
             if (!this.getSlotOfItem(item)) {
-                this.move(this.getNewInventorySlot(), item.uuid)
+                this.move(this.getNewInventorySlot(), item.uuid, true)
             }
         })
     }
