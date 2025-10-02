@@ -163,12 +163,12 @@ export interface HeartbeatPayload {
     timestamp: number;
 }
 
-const tMoveItemRequest = t.array(t.strictInterface({
+const tMoveItemsRequest = t.array(t.strictInterface({
     slot: t.string,
     itemUuid: t.string,
 }));
 
-export type MoveItemRequest = t.static<typeof tMoveItemRequest>
+export type MoveItemsRequest = t.static<typeof tMoveItemsRequest>
 
 export interface MoveItemResponse {
     ok: boolean;
@@ -205,11 +205,14 @@ export class HeartbeatAckPacket extends Packet<HeartbeatPayload, HeartbeatPayloa
 @Opcode(0x03, PacketDirection.ServerToClientEvent)
 export class InventoryUpdatePacket extends Packet<InventorySnapshot> {}
 
-@Opcode(0x04, PacketDirection.ClientToServerRequest, { validator: tMoveItemRequest })
-export class MoveItemsPacket extends Packet<MoveItemRequest, MoveItemResponse> {}
+@Opcode(0x04, PacketDirection.ClientToServerRequest, { validator: tMoveItemsRequest })
+export class MoveItemsPacket extends Packet<MoveItemsRequest, MoveItemResponse> {}
 
 @Opcode(0x05, PacketDirection.ClientToServerRequest, { validator: tEquipItemRequest })
 export class EquipItemPacket extends Packet<EquipItemRequest, EquipItemResponse> {}
 
 @Opcode(0x06, PacketDirection.ClientToServerRequest) 
 export class DropItemPacket extends Packet {}
+
+@Opcode(0x07, PacketDirection.ClientToServerRequest)
+export class SwingItemPacket extends Packet {}

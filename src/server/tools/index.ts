@@ -1,6 +1,7 @@
-import { ItemInstance } from "../../shared/items"
+import { ItemInstance, ItemType } from "../../shared/items"
+import { itemRepository } from "../../shared/items/repository"
 import { getItemTool } from "../../shared/items/util"
-import { playerInventories } from "../inventory/service"
+import { combatHandler } from "../combat/handler"
 
 class ToolRegistry {
     private items = new Map<string, ItemInstance>()
@@ -26,16 +27,18 @@ export function createItemToolInstance(item: ItemInstance) {
 
     toolRegistry.add(item)
 
-    const clone = tool.Clone()
+    const clone = tool.Clone() as Tool
 
     clone.Name = item.uuid
     clone.SetAttribute("uuid", item.uuid);
     
-    (clone as Tool).CanBeDropped = false
+    clone.CanBeDropped = false
 
     clone.Destroying.Once(() => {
         toolRegistry.remove(item.uuid)
     })
+
+    if (itemRepository.get(item.id)?.type === ItemType.WEAPON) combatHandler.register(clone)
 
     return clone
 }

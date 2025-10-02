@@ -2,7 +2,7 @@ import { HttpService, RunService } from "@rbxts/services";
 import { ItemInstance } from "../../shared/items";
 import { itemRepository } from "../../shared/items/repository";
 import {
-    MoveItemRequest as MoveItemsRequest,
+    MoveItemsRequest as MoveItemsRequest,
     MoveItemResponse,
     InventorySnapshot,
     InventoryUpdatePacket,
@@ -13,17 +13,8 @@ import {
 } from "../../shared/network";
 import { ServerNet } from "../network";
 import type { PlayerProfile } from "../profiles";
-import { PlayerInventory } from "../../shared/inventory";
+import { InventoryState } from "../../shared/inventory";
 import { createItemToolInstance } from "../tools";
-
-interface HeartbeatState {
-    clientTimestamp: number;
-    serverTimestamp: number;
-    roundTripMs: number;
-}
-
-export const playerInventories = new Map<number, ServerPlayerInventory>();
-const heartbeatState = new Map<number, HeartbeatState>();
 
 function cloneItem(item: ItemInstance): ItemInstance {
     return {
@@ -44,8 +35,7 @@ function createItemInstance(defId: string, stack = 1): ItemInstance | undefined 
         uuid: HttpService.GenerateGUID(false),
         id: def.id,
         stack,
-        // Start with modifiers defined on the item definition; copy so clients can't mutate server state
-        attr: def.attr.map((attr) => ({ ...attr })),
+        attr: []
     };
 }
 
@@ -81,7 +71,7 @@ function isEmptyRecord(record: Record<string, unknown>) {
     return true;
 }
 
-class ServerPlayerInventory extends PlayerInventory {
+export class ServerInventoryState extends InventoryState {
     constructor(private readonly player: Player, private readonly profile: PlayerProfile) {
         super()
 
@@ -93,7 +83,7 @@ class ServerPlayerInventory extends PlayerInventory {
         }
 
         this.ensureDebugItems();
-        this.syncToClient();
+        this.bumpAndSync();
     }
 
     move(slot: string, itemUuid: string, skipSync?: boolean): MoveItemResponse {
@@ -165,80 +155,13 @@ class ServerPlayerInventory extends PlayerInventory {
         this.bumpAndSync()
     }
 
-    syncEquippedItem() {
-        if (!this.player.Character) {
-            return {
-                ok: false,
-                error: "Player character does not exist."
-            }
-        }
-
-        const slot = this.getEquippedSlot()
-
-        if (slot === undefined) { // Equipped no slot
-            // Unequip all tools
-            for (const child of this.player.Character.GetChildren()) {
-                if (child.IsA("Tool")) {
-                    child.Destroy()
-                }
-            }
-
-            return {
-                ok: true
-            }
-        }
-
-        const item = this.getItemInSlot(slot)
-
-        if (!item) {
-            // Unequip all tools
-            for (const child of this.player.Character.GetChildren()) {
-                if (child.IsA("Tool")) {
-                    child.Destroy()
-                }
-            }
-
-            return {
-                ok: true
-            }
-        }
-
-        const tool = createItemToolInstance(item)
-
-        if (!tool) {
-            return {
-                ok: false,
-                error: "Unable to create tool instance."
-            }
-        }
-
-        // Handle equipped tools
-        for (const child of this.player.Character.GetChildren()) {
-            if (child.IsA("Tool")) {
-                if (child.GetAttribute("uuid") === item.uuid) { // If tool already equipped, return
-                    return {
-                        ok: true
-                    }
-                }
-
-                child.Destroy() // Otherwise destroy equipped tool
-            }
-        }
-
-        const clone = tool.Clone()
-
-        clone.Parent = this.player.Character
-
-        return {
-            ok: true
-        }
-    }
-
     equip(slot: string | undefined): EquipItemResponse {
         this.equippedSlot = slot
         this.bumpAndSync()
 
-        return this.syncEquippedItem()
+        return {
+            ok: true
+        }
     }
 
     private loadSnapshot(snapshot: InventorySnapshot) {
@@ -246,7 +169,7 @@ class ServerPlayerInventory extends PlayerInventory {
         this.slots.clear();
         this.slots.clear();
 
-        this._version = snapshot._version ?? 0;
+        this.setVersion(snapshot._version)
 
         for (const [uuid, item] of pairs(snapshot.items)) {
             this.items.set(uuid, cloneItem(item));
@@ -268,9 +191,9 @@ class ServerPlayerInventory extends PlayerInventory {
     }
 
     bumpAndSync() {
-        this._version += 1;
+        this.bump()
+
         this.moveStrandedItems()
-        this.syncEquippedItem()
         this.syncToClient();
     }
 
@@ -338,90 +261,10 @@ class ServerPlayerInventory extends PlayerInventory {
         })
 
         return {
-            _version: this._version,
+            _version: this.getVersion(),
             slots,
             items,
             equippedSlot: this.equippedSlot
         };
     }
 }
-
-export function bindPlayerInventory(player: Player, profile: PlayerProfile) {
-    const existing = playerInventories.get(player.UserId);
-    if (existing) {
-        existing.dispose();
-    }
-
-    const inventory = new ServerPlayerInventory(player, profile);
-    playerInventories.set(player.UserId, inventory);
-}
-
-export function unbindPlayerInventory(player: Player) {
-    const inventory = playerInventories.get(player.UserId);
-    if (!inventory) {
-        return;
-    }
-
-    inventory.dispose();
-    playerInventories.delete(player.UserId);
-    heartbeatState.delete(player.UserId);
-}
-
-export function handleMoveRequest(player: Player, payload: MoveItemsRequest): MoveItemResponse {
-    const inventory = playerInventories.get(player.UserId);
-    if (!inventory) {
-        return {
-            ok: false,
-            error: "Inventory not ready",
-        };
-    }
-
-    for (const move of payload) {
-        const response = inventory.move(move.slot, move.itemUuid, true)
-
-        if (!response.ok) {
-            inventory.bumpAndSync()
-            return response
-        }
-    }
-
-    inventory.bumpAndSync()
-
-    return {
-        ok: true
-    };
-}
-
-export function handleEquipRequest(player: Player, payload: EquipItemRequest): EquipItemResponse {
-    const inventory = playerInventories.get(player.UserId);
-    if (!inventory) {
-        return {
-            ok: false,
-            error: "Inventory not ready",
-        };
-    }
-
-    return inventory.equip(payload.slot)
-}
-
-export function handleDropRequest(player: Player) {
-    const inventory = playerInventories.get(player.UserId);
-    if (!inventory) {
-        return {
-            ok: false,
-            error: "Inventory not ready",
-        };
-    }
-
-    return inventory.drop();
-}
-
-export function updateHeartbeat(player: Player, state: HeartbeatState) {
-    heartbeatState.set(player.UserId, state);
-}
-
-export function getHeartbeat(player: Player) {
-    return heartbeatState.get(player.UserId);
-}
-
-export {}

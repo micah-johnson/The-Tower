@@ -5,7 +5,7 @@ export function useInventoryVersion() {
   const [v, setV] = useState(playerInventory.getVersion());
   
   useEffect(() => {
-    const conn = playerInventory.changed.Connect(setV);
+    const conn = playerInventory.Changed.Connect(setV);
     return () => { conn.Disconnect() };
   }, []);
 

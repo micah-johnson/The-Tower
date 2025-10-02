@@ -3,10 +3,9 @@ import { ItemInstance } from "../../shared/items";
 import { BiMap } from "../../shared/utils/bimap";
 import { Signal } from "../../shared/utils/signal";
 import { HttpService } from "@rbxts/services";
+import { State } from "../state";
 
-export abstract class PlayerInventory {
-    protected _version = 0;
-
+export abstract class InventoryState extends State {
     protected slots = new BiMap<string, string>(); // slot_id -> item_uuid
     protected items = new Map<string, ItemInstance>();
 
@@ -59,10 +58,6 @@ export abstract class PlayerInventory {
 
     getSlotOfItem(item: ItemInstance) {
         return this.slots.getByValue(item.uuid);
-    }
-
-    getVersion() {
-        return this._version;
     }
 
     getEquippedSlot() {

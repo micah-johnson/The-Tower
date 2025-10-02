@@ -2,7 +2,7 @@ import ProfileStore from "@rbxts/profile-store";
 import { Players } from "@rbxts/services";
 import { ItemInstance } from "../shared/items";
 import { InventorySnapshot } from "../shared/network";
-import { bindPlayerInventory, unbindPlayerInventory } from "./inventory/service";
+import { playerRepository } from "./player/repository";
 
 const PROFILE_TEMPLATE: {
     cum: number,
@@ -41,14 +41,14 @@ Players.PlayerAdded.Connect((player) => {
     profile.Reconcile()
 
     profile.OnSessionEnd.Connect(() => {
-        unbindPlayerInventory(player);
+        playerRepository.unbind(player);
         delete profiles[player.UserId]
         player.Kick("Session Ended, please reconnect")
     })
 
     if (player.Parent === Players) {
         profiles[player.UserId] = profile
-        bindPlayerInventory(player, profile)
+        playerRepository.bind(player, profile)
     } else {
         // Player left before session started
         profile.EndSession()

@@ -3,15 +3,16 @@ import { t } from "@rbxts/t";
 export const Attribute = {
   HEALTH: "Health",
   DAMAGE: "Damage",
+  ATTACK_SPEED: "Attack Speed",
   FORTITUDE: "Fortitude",
   AGILITY: "Agility",
   INTELLIGENCE: "Intelligence",
   LUCK: "Luck",
-}
+} as const
 
 export const tAttribute = t.valueOf(Attribute);
 
-export type Attribute = typeof Attribute
+export type Attribute = typeof Attribute[keyof typeof Attribute]
 
 // Item Rarity
 export const ItemRarity = {
@@ -36,7 +37,34 @@ export const ItemType = {
 
 export const tItemType = t.valueOf(ItemType);
 
-export type ItemType = typeof ItemType
+export type ItemType = typeof ItemType[keyof typeof ItemType];
+
+// Item Sub Type
+export const ItemSubType = {
+  [ItemType.WEAPON]: {
+    SWORD: "Sword",
+  },
+  [ItemType.ARMOR]: {
+    HELMET: "Helmet",
+    CHESTPLATE: "Chestplate",
+    LEGGINGS: "Leggings",
+    BOOTS: "Boots",
+  },
+  [ItemType.RESOURCE]: {} as const,
+  [ItemType.TOOL]: {} as const,
+} as const;
+
+type ItemSubTypeMap = typeof ItemSubType;
+
+// For a given primary type T, this yields the union of subtype *values* (e.g. "Sword" | "Helmet" | ...)
+export type SubTypeFor<T extends ItemType> =
+  keyof ItemSubTypeMap[T] extends never
+    ? never
+    : ItemSubTypeMap[T][keyof ItemSubTypeMap[T]];
+
+// Runtime validator for a given primary type
+export const tSubTypeFor = <T extends ItemType>(itemType: T) =>
+  t.valueOf(ItemSubType[itemType] as Record<string, string>);
 
 // Item Attribute
 export const tAttributeModifier = t.interface({
@@ -45,21 +73,51 @@ export const tAttributeModifier = t.interface({
   value: t.number
 })
 
-export type ItemAttribute = t.static<typeof tAttributeModifier>
+export type AttributeModifier = t.static<typeof tAttributeModifier>
 
 // Item Definition
-export const tItemDef = t.interface({
+// Common item fields (without type/subtype so we can intersect in discriminated union)
+const tItemCommon = t.interface({
   id: t.string,
-  type: tItemType,
   name: t.string,
   description: t.string,
-  maxStack: t.number, // -1 = unlimited, 1 = non-stackable
+  maxStack: t.number,
   transferable: t.boolean,
   attr: t.array(tAttributeModifier),
   rarity: tItemRarity,
-  durability: t.number, // -1 = unbreakable
-//   allowedEnchants: []
-})
+  durability: t.number,
+});
+
+// Discriminated union at runtime: (type === X) ⇒ (subtype ∈ SubTypeFor<X>)
+export const tItemDef = t.union(
+  t.intersection(
+    tItemCommon,
+    t.interface({
+      type: t.literal(ItemType.WEAPON),
+      subtype: t.valueOf(ItemSubType[ItemType.WEAPON]),
+    }),
+  ),
+  t.intersection(
+    tItemCommon,
+    t.interface({
+      type: t.literal(ItemType.ARMOR),
+      subtype: t.valueOf(ItemSubType[ItemType.ARMOR]),
+    }),
+  ),
+  t.intersection(
+    tItemCommon,
+    t.interface({
+      type: t.literal(ItemType.RESOURCE),
+      // No subtypes allowed -> omit field or set to never via t.never() if you prefer explicit
+    }),
+  ),
+  t.intersection(
+    tItemCommon,
+    t.interface({
+      type: t.literal(ItemType.TOOL),
+    }),
+  )
+);
 
 export type ItemDef = t.static<typeof tItemDef>;
 

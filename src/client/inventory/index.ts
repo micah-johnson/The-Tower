@@ -1,11 +1,11 @@
-import { EquipItemPacket, InventorySnapshot, MoveItemRequest, MoveItemsPacket } from "../../shared/network";
+import { EquipItemPacket, InventorySnapshot, MoveItemsRequest, MoveItemsPacket } from "../../shared/network";
 import { ItemInstance } from "../../shared/items";
 import { BiMap } from "../../shared/utils/bimap";
 import { Signal } from "../../shared/utils/signal";
 import { isSlotEquippable } from "../../shared/items/util";
 import { ClientNet } from "../network";
 import { HttpService } from "@rbxts/services";
-import { PlayerInventory } from "../../shared/inventory";
+import { InventoryState } from "../../shared/inventory";
 
 function cloneItem(item: ItemInstance): ItemInstance {
     return {
@@ -16,9 +16,7 @@ function cloneItem(item: ItemInstance): ItemInstance {
     };
 }
 
-export class ClientPlayerInventory extends PlayerInventory {
-    readonly changed = new Signal<[number]>();
-
+export class ClientPlayerInventory extends InventoryState {
     applySnapshot(snapshot: InventorySnapshot) {
         this.items.clear();
         this.slots.clear();
@@ -34,9 +32,7 @@ export class ClientPlayerInventory extends PlayerInventory {
         }
 
         this.equippedSlot = snapshot.equippedSlot
-
-        this._version = snapshot._version;
-        this.changed.Fire(this._version);
+        this.setVersion(snapshot._version)
     }
 }
 

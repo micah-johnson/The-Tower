@@ -1,4 +1,4 @@
-import { Attribute, ItemDef, ItemRarity, ItemType, tItemDef } from ".";
+import { Attribute, ItemDef, ItemRarity, ItemSubType, ItemType, tItemDef } from ".";
 import { RARITY_COLORS } from "../consts/colors";
 export class ItemRepository {
     private readonly itemDefs = new Map<string, ItemDef>();
@@ -25,12 +25,21 @@ export const itemRepository = new ItemRepository([{
     id: "rape_sword",
     name: "Sword of Raping",
     type: ItemType.WEAPON,
+    subtype: ItemSubType[ItemType.WEAPON].SWORD,
     description: `A <font color="#${RARITY_COLORS.Mythical.ToHex()}">Mythical</font> sword, <font color="#ff7aca">rape</font> your opponents!`,
     rarity: ItemRarity.MYTHICAL,
     attr: [{
+        attribute: Attribute.HEALTH,
+        type: "additive",
+        value: 69
+    }, {
         attribute: Attribute.DAMAGE,
         type: "additive",
-        value: 50000
+        value: 20
+    }, {
+        attribute: Attribute.ATTACK_SPEED,
+        type: "additive",
+        value: 1000
     }],
     maxStack: 1,
     transferable: false,
@@ -39,12 +48,17 @@ export const itemRepository = new ItemRepository([{
     id: "sword",
     name: "Sword",
     type: ItemType.WEAPON,
+    subtype: ItemSubType[ItemType.WEAPON].SWORD,
     description: `A boring ahh sword sword, does <font color="#ff2b1c">not</font> rape your opponents...`,
     rarity: ItemRarity.COMMON,
     attr: [{
         attribute: Attribute.DAMAGE,
         type: "additive",
         value: 5
+    }, {
+        attribute: Attribute.ATTACK_SPEED,
+        type: "additive",
+        value: 1000
     }],
     maxStack: 1,
     transferable: false,
@@ -53,12 +67,17 @@ export const itemRepository = new ItemRepository([{
     id: "rare_sword",
     name: "Sword",
     type: ItemType.WEAPON,
+    subtype: ItemSubType[ItemType.WEAPON].SWORD,
     description: `A boring ahh sword sword, does <font color="#ff2b1c">not</font> rape your opponents...`,
     rarity: ItemRarity.RARE,
     attr: [{
         attribute: Attribute.DAMAGE,
         type: "additive",
         value: 5
+    }, {
+        attribute: Attribute.ATTACK_SPEED,
+        type: "additive",
+        value: 1000
     }],
     maxStack: 1,
     transferable: false,
@@ -67,12 +86,17 @@ export const itemRepository = new ItemRepository([{
     id: "epic_sword",
     name: "Sword",
     type: ItemType.WEAPON,
+    subtype: ItemSubType[ItemType.WEAPON].SWORD,
     description: `A boring ahh sword sword, does <font color="#ff2b1c">not</font> rape your opponents...`,
     rarity: ItemRarity.EPIC,
     attr: [{
         attribute: Attribute.DAMAGE,
         type: "additive",
         value: 5
+    }, {
+        attribute: Attribute.ATTACK_SPEED,
+        type: "additive",
+        value: 1000
     }],
     maxStack: 1,
     transferable: false,
@@ -81,12 +105,17 @@ export const itemRepository = new ItemRepository([{
     id: "legendary_sword",
     name: "Sword",
     type: ItemType.WEAPON,
+    subtype: ItemSubType[ItemType.WEAPON].SWORD,
     description: `A boring ahh sword sword, does <font color="#ff2b1c">not</font> rape your opponents...`,
     rarity: ItemRarity.LEGENDARY,
     attr: [{
         attribute: Attribute.DAMAGE,
         type: "additive",
         value: 5
+    }, {
+        attribute: Attribute.ATTACK_SPEED,
+        type: "additive",
+        value: 1000
     }],
     maxStack: 1,
     transferable: false,

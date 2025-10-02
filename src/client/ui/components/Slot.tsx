@@ -9,7 +9,7 @@ import { ItemViewport } from "./ItemViewport";
 import { ItemTooltip } from "./ItemTooltip";
 import { useItemDragging } from "../context/ItemDraggingContext";
 import { ClientNet } from "../../network";
-import { EquipItemPacket, MoveItemRequest, MoveItemsPacket, PayloadOf } from "../../../shared/network";
+import { EquipItemPacket, MoveItemsRequest, MoveItemsPacket, PayloadOf } from "../../../shared/network";
 import { useInventoryVersion } from "../../hooks/inventory";
 import { playerInventory } from "../../inventory";
 
@@ -77,7 +77,7 @@ export function Slot(props: {
 
         // Initiate transfer
         if (dragState) {
-            const moves: MoveItemRequest = []
+            const moves: MoveItemsRequest = []
             if (item) { // slot has item, set up for swap
                 moves.push({
                     slot: dragState.originSlot,

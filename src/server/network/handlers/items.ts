@@ -1,10 +1,9 @@
-import { EquipItemPacket, EquipItemRequest, EquipItemResponse, MoveItemsPacket, MoveItemRequest, MoveItemResponse, DropItemPacket } from "../../../shared/network";
+import { EquipItemPacket, EquipItemRequest, EquipItemResponse, MoveItemsPacket, MoveItemsRequest, MoveItemResponse, DropItemPacket } from "../../../shared/network";
+import { playerRepository } from "../../player/repository";
 import { ServerRequestHandler } from "../decorators";
-import { handleDropRequest, handleEquipRequest, handleMoveRequest } from "../../inventory/service";
-
 class ItemHandlers {
     @ServerRequestHandler(MoveItemsPacket)
-    public static onMoveItem(player: Player, payload: MoveItemRequest): MoveItemResponse {
+    public static onMoveItem(player: Player, payload: MoveItemsRequest): MoveItemResponse {
         return handleMoveRequest(player, payload);
     }
 
@@ -17,6 +16,55 @@ class ItemHandlers {
     public static onDropItem(player: Player) {
         return handleDropRequest(player)
     }
+}
+
+export function handleMoveRequest(player: Player, payload: MoveItemsRequest): MoveItemResponse {
+    const inventory = playerRepository.getByPlayer(player)?.inventoryState;
+    if (!inventory) {
+        return {
+            ok: false,
+            error: "Inventory not ready",
+        };
+    }
+
+    for (const move of payload) {
+        const response = inventory.move(move.slot, move.itemUuid, true)
+
+        if (!response.ok) {
+            inventory.bumpAndSync()
+            return response
+        }
+    }
+
+    inventory.bumpAndSync()
+
+    return {
+        ok: true
+    };
+}
+
+export function handleEquipRequest(player: Player, payload: EquipItemRequest): EquipItemResponse {
+    const inventory = playerRepository.getByPlayer(player)?.inventoryState;
+    if (!inventory) {
+        return {
+            ok: false,
+            error: "Inventory not ready",
+        };
+    }
+
+    return inventory.equip(payload.slot)
+}
+
+export function handleDropRequest(player: Player) {
+    const inventory = playerRepository.getByPlayer(player)?.inventoryState;
+    if (!inventory) {
+        return {
+            ok: false,
+            error: "Inventory not ready",
+        };
+    }
+
+    return inventory.drop();
 }
 
 export {}
