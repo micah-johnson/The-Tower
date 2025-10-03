@@ -6,11 +6,7 @@ import { itemRepository } from "../../../shared/items/repository"
 import { useTweenableState } from "../../hooks/tween"
 import { useItemDragging } from "../context/ItemDraggingContext"
 import { playerInventory } from "../../inventory"
-
-function adjustForInset(position: Vector2) {
-    const [inset] = GuiService.GetGuiInset();
-    return new Vector2(position.X - inset.X, position.Y - inset.Y);
-};
+import { adjustForInset } from "../util"
 
 export function ItemDragGhost(){
     const { dragState, setDragState } = useItemDragging()
@@ -37,13 +33,13 @@ export function ItemDragGhost(){
             setStrokeTransparency(0.1)
 
             // Track mouse movement
-            setPosition(adjustForInset(UserInputService.GetMouseLocation()))
+            setPosition(UserInputService.GetMouseLocation())
 
             const moveConn = UserInputService.InputChanged.Connect((input) => {
                 if (input.UserInputType === Enum.UserInputType.MouseMovement) {
                     // Adjust for inset not necessary for this event, raw position is returned by default.
                     const pointer = new Vector2(input.Position.X, input.Position.Y);
-                    setPosition(pointer);
+                    setPosition(adjustForInset(pointer));
                     print(`[Hotbar] move -> (${pointer.X}, ${pointer.Y})`);
                 }
             });
@@ -64,14 +60,13 @@ export function ItemDragGhost(){
 
     const item = dragState ? playerInventory.getItem(dragState.itemUuid) : undefined
 
-    const screenPosition = new Vector2(position.X - 25, position.Y + 25);
-
     return (
         <frame
             ref={ref}
             key="DragGhost"
             Size={UDim2.fromOffset(50, 50)}
-            Position={UDim2.fromOffset(screenPosition.X, screenPosition.Y)}
+            Position={UDim2.fromOffset(position.X, position.Y)}
+            AnchorPoint={new Vector2(0.5,0.5)}
             BackgroundColor3={color.Lerp(Color3.fromRGB(0,0,0), 0.7)}
             BackgroundTransparency={1}
             Transparency={transparency}

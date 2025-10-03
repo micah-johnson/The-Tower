@@ -1,4 +1,4 @@
-import { Players } from "@rbxts/services";
+import { Debris, Players } from "@rbxts/services";
 import { Attribute } from "../../shared/items";
 import type { PlayerRepository } from "../player/repository";
 import { ServerPlayerState } from "../player";
@@ -88,8 +88,41 @@ export class CombatHandler {
         const result = this.coordinator.apply(context)
 
         if (result.applied) {
+            this.applyKnockback(attacker.player, victim.player)
             victim.combatState.setLastDamaged(attacker.player, DateTime.now().UnixTimestampMillis)
         }
+    }
+
+    applyKnockback(
+        attacker: Player,
+        victim: Player,
+        opts?: { horizontal?: number; vertical?: number; duration?: number },
+    ) {
+        const victimRoot = victim.Character?.FindFirstChild("HumanoidRootPart") as BasePart | undefined;
+        const attackerRoot = attacker.Character?.FindFirstChild("HumanoidRootPart") as BasePart | undefined;
+        if (!victimRoot || !attackerRoot) return;
+
+        const horizontal = opts?.horizontal ?? 3000; // how hard to push back
+        const vertical = opts?.vertical ?? 10;     // upward lift
+        const duration = opts?.duration ?? 0.1;   // seconds to keep the push
+
+        // Direction from attacker -> victim (fallback to attacker's facing if overlapping)
+        const offset = victimRoot.Position.sub(attackerRoot.Position);
+        const dir = offset.Magnitude > 1e-3 ? offset.Unit : attackerRoot.CFrame.LookVector;
+
+        // Attachment + LinearVelocity for a brief burst
+        const attachment = new Instance("Attachment");
+        attachment.Parent = victimRoot;
+
+        const lv = new Instance("LinearVelocity");
+        lv.Attachment0 = attachment;
+        lv.MaxForce = math.huge; // unlimited for the brief burst
+        lv.VectorVelocity = dir.mul(horizontal).add(new Vector3(0, vertical, 0));
+        lv.Parent = victimRoot;
+
+        // Auto-cleanup after the burst
+        Debris.AddItem(lv, duration);
+        Debris.AddItem(attachment, duration);
     }
 }
 

@@ -17,7 +17,6 @@ function disableCoreGUIs() {
 }
 
 setupKeybinds()
-
 root.render(<App />)
 disableCoreGUIs()
 
