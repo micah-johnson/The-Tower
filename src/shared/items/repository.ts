@@ -32,21 +32,21 @@ export const itemRepository = new ItemRepository([
         description: `A <font color="#${RARITY_COLORS.Mythical.ToHex()}">Mythical</font> sword, <font color="#ff7aca">rape</font> your opponents!`,
         rarity: ItemRarity.MYTHICAL,
         attr: [{
-            attribute: Attribute.HEALTH,
-            type: "additive",
-            value: 69,
-        }, {
             attribute: Attribute.DAMAGE,
             type: "additive",
             value: 20,
+        }, {
+            attribute: Attribute.HEALTH,
+            type: "additive",
+            value: 69,
         }, {
             attribute: Attribute.ATTACK_SPEED,
             type: "additive",
             value: 1000,
         }, {
             attribute: Attribute.SPEED,
-            type: "additive",
-            value: 20,
+            type: "multiplicative",
+            value: 1.5,
         }],
         effects: [{
             type: ItemEffectType.LIFESTEAL,
