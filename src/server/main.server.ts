@@ -6,26 +6,34 @@ import { playerRepository } from "./container";
 import { Attribute } from "../shared/items";
 
 import "./inventory/handler"
+import { ServerPlayerState } from "./player";
 
 // Handle Player Loaded
 playerRepository.Added.Connect(playerState => {
-	// Health Listener
+	// Sync Attributes with Humanoid
+	syncHumanoid(playerState)
+
 	playerState.Changed.Connect(() => {
-		print(playerState.getAttributeValue(Attribute.HEALTH))
+		syncHumanoid(playerState)
+	})
+})
+
+function syncHumanoid(playerState: ServerPlayerState) {
+	print(playerState.getAttributeValue(Attribute.HEALTH))
 
 		const humanoid = playerState.player.Character?.FindFirstChild("Humanoid") as Humanoid | undefined
 
 		if (!humanoid) return;
-		
 
 		const health = playerState.getAttributeValue(Attribute.HEALTH)
+		const speed = playerState.getAttributeValue(Attribute.SPEED)
 
 		if (humanoid.MaxHealth !== health) {
 			humanoid.MaxHealth = health
 			humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
+			humanoid.WalkSpeed = speed
 		}
-	})
-})
+}
 
 Workspace.ChildAdded.Connect(child => {
 	if (child.IsA("Tool")) {

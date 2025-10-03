@@ -4,6 +4,9 @@ import type { PlayerRepository } from "../player/repository";
 import { ServerPlayerState } from "../player";
 import type { ServerDamageContext } from "./damageCoordinator";
 import { ServerDamageCoordinator } from "./damageCoordinator";
+import { playAnimation } from "./animation";
+import { AnimationAction } from "../../shared/consts/animations";
+import { itemRepository } from "../../shared/items/repository";
 
 export class CombatHandler {
     constructor(
@@ -47,11 +50,18 @@ export class CombatHandler {
     }
 
     handleSwing(player: ServerPlayerState) {
-        if (!this.isSwinging(player)) player.combatState.setLastSwing(DateTime.now().UnixTimestampMillis)
+        if (this.canSwing(player)) {
+            player.combatState.setLastSwing(DateTime.now().UnixTimestampMillis)
+            playAnimation(player.player, itemRepository.get(player.inventoryState.getEquippedItem()!.id)!, AnimationAction.USE, 0, player.getAttributeValue(Attribute.ATTACK_SPEED))
+        }
     }
 
     isSwinging(player: ServerPlayerState) {
         return DateTime.now().UnixTimestampMillis - player.combatState.getLastSwing() < player.getAttributeValue(Attribute.ATTACK_SPEED)
+    }
+
+    canSwing(player: ServerPlayerState) {
+        return player.inventoryState.getEquippedItem() && !this.isSwinging(player)
     }
 
     canAttack(attacker: ServerPlayerState, victim: ServerPlayerState) {

@@ -3,6 +3,7 @@ import { t } from "@rbxts/t";
 export const Attribute = {
   HEALTH: "Health",
   DAMAGE: "Damage",
+  SPEED: "Speed",
   ATTACK_SPEED: "Attack Speed",
   FORTITUDE: "Fortitude",
   AGILITY: "Agility",

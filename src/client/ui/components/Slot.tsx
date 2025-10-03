@@ -124,7 +124,7 @@ export function Slot(props: {
         });
 
         return () => connection.Disconnect();
-    }, [props.keybind, props.onActivated]);
+    }, [props.keybind, selected]);
 
     useEffect(() => {
         setTransparency(defaultTransparency)

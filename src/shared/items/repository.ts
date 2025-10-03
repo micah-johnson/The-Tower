@@ -43,6 +43,10 @@ export const itemRepository = new ItemRepository([
             attribute: Attribute.ATTACK_SPEED,
             type: "additive",
             value: 1000,
+        }, {
+            attribute: Attribute.SPEED,
+            type: "additive",
+            value: 20,
         }],
         effects: [{
             type: ItemEffectType.LIFESTEAL,

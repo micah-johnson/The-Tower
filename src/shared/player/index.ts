@@ -56,4 +56,8 @@ export const DEFAULT_ATTR: AttributeModifier[] = [{
     attribute: Attribute.HEALTH,
     type: "additive",
     value: 100
+}, {
+    attribute: Attribute.SPEED,
+    type: "additive",
+    value: 20
 }]

@@ -1,6 +1,6 @@
 import { ItemDef, ItemSubType, ItemType, SubTypeFor } from "../items";
 
-enum AnimationAction {
+export enum AnimationAction {
     IDLE,
     USE
 }
