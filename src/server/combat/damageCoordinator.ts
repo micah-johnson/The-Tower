@@ -15,8 +15,11 @@ export class ServerDamageCoordinator {
 
 		let result = initial;
 
-		while (queue.size() > 0) {
-			const context = queue.shift()!;
+		while (true) {
+			const context = queue.pop();
+			if (!context) {
+				break;
+			}
 			context.cancelled = context.cancelled ?? false;
 			context.applied = context.applied ?? false;
 

@@ -10,19 +10,14 @@ export type PipelineDisposer = () => void;
 export class Pipeline<T extends PipelineContext> {
     private modifiers = new Array<PipelineModifier<T>>();
 
-    register(modifier: PipelineModifier<T>): PipelineDisposer {
-        this.modifiers.push(modifier);
-        this.sortModifiers();
-        return () => this.unregister(modifier);
-    }
+	register(modifier: PipelineModifier<T>): PipelineDisposer {
+		this.modifiers.push(modifier);
+		this.sortModifiers();
+		return () => this.unregister(modifier);
+	}
 
 	private unregister(modifier: PipelineModifier<T>) {
-		const index = this.modifiers.indexOf(modifier);
-		if (index >= 0) {
-			const lastIndex = this.modifiers.size() - 1;
-			this.modifiers[index] = this.modifiers[lastIndex];
-			this.modifiers.pop();
-		}
+		this.modifiers = this.modifiers.filter((entry) => entry !== modifier);
 	}
 
     private sortModifiers() {

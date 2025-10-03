@@ -1,5 +1,6 @@
 import { EquipItemPacket, InventorySnapshot, MoveItemsRequest, MoveItemsPacket } from "../../shared/network";
 import { ItemInstance } from "../../shared/items";
+import { cloneBlockConfig } from "../../shared/items/blockDefaults";
 import { BiMap } from "../../shared/utils/bimap";
 import { Signal } from "../../shared/utils/signal";
 import { isSlotEquippable } from "../../shared/items/util";
@@ -14,6 +15,8 @@ function cloneItem(item: ItemInstance): ItemInstance {
         stack: item.stack,
         attr: item.attr.map((attr) => ({ ...attr })),
         effects: item.effects?.map(effect => ({ ...effect })),
+        block: item.block ? cloneBlockConfig(item.block) : undefined,
+        durability: item.durability,
     };
 }
 

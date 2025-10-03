@@ -1,6 +1,7 @@
 import { HttpService, RunService } from "@rbxts/services";
 import { ItemEffectType, ItemInstance } from "../../shared/items";
 import { itemRepository } from "../../shared/items/repository";
+import { cloneBlockConfig } from "../../shared/items/blockDefaults";
 import {
     MoveItemsRequest as MoveItemsRequest,
     MoveItemResponse,
@@ -14,9 +15,9 @@ import {
 } from "../../shared/network";
 import { ServerNet } from "../network";
 import type { PlayerProfile } from "../profiles";
+import type { ServerPlayerState } from "../player";
 import { InventoryState } from "../../shared/inventory";
 import type { ServerDamageCoordinator } from "../combat/damageCoordinator";
-import type { ServerPlayerState } from "../player";
 
 function cloneItem(item: ItemInstance): ItemInstance {
     return {
@@ -25,6 +26,8 @@ function cloneItem(item: ItemInstance): ItemInstance {
         stack: item.stack,
         attr: item.attr.map((attr) => ({ ...attr })),
         effects: item.effects?.map(effect => ({ ...effect })),
+        block: item.block ? cloneBlockConfig(item.block) : undefined,
+        durability: item.durability,
     };
 }
 
@@ -40,6 +43,8 @@ function createItemInstance(defId: string, stack = 1): ItemInstance | undefined 
         stack,
         attr: [],
         effects: def.effects?.map(effect => ({ ...effect })),
+        block: def.block ? cloneBlockConfig(def.block) : undefined,
+        durability: def.durability,
     };
 }
 
@@ -100,6 +105,7 @@ export class ServerInventoryState extends InventoryState {
     attachOwner(owner: ServerPlayerState) {
         this.ownerState = owner;
         this.refreshEquippedModifiers();
+        owner.blockState.onEquippedChanged(this.getEquippedItem());
     }
 
     move(slot: string, itemUuid: string, skipSync?: boolean): MoveItemResponse {
@@ -245,6 +251,39 @@ export class ServerInventoryState extends InventoryState {
         this.items.delete(item.uuid);
     }
 
+    destroyItem(item: ItemInstance) {
+        const slot = this.getSlotOfItem(item);
+        if (slot) {
+            this.slots.deleteByKey(slot);
+        }
+
+        if (this.equippedSlot === slot) {
+            this.equippedSlot = undefined;
+            this.refreshEquippedModifiers();
+        }
+
+        this.removeItem(item);
+        this.bumpAndSync();
+    }
+
+    damageItemDurability(item: ItemInstance, amount: number) {
+        const record = this.items.get(item.uuid);
+        if (!record) return;
+
+        if (record.durability === undefined || record.durability < 0) {
+            return; // infinite durability
+        }
+
+        record.durability = math.max(0, record.durability - amount);
+
+        if (record.durability === 0) {
+            this.destroyItem(record);
+            return;
+        }
+
+        this.bumpAndSync();
+    }
+
     private ensureDebugItems() {
         if (!RunService.IsStudio()) {
             return;
@@ -305,6 +344,7 @@ export class ServerInventoryState extends InventoryState {
 
         const equipped = this.getEquippedItem();
         if (!equipped) {
+            owner.blockState.onEquippedChanged(undefined);
             return;
         }
 
@@ -342,6 +382,8 @@ export class ServerInventoryState extends InventoryState {
                 this.equippedModifierDisposers.push(dispose);
             }
         }
+
+        owner.blockState.onEquippedChanged(equipped);
     }
 
     private toSnapshot(): InventorySnapshot {

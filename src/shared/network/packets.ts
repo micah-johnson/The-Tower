@@ -221,3 +221,13 @@ export class DropItemPacket extends Packet<void, DropItemResponse> {}
 
 @Opcode(0x07, PacketDirection.ClientToServerRequest)
 export class SwingItemPacket extends Packet {}
+
+@Opcode(0x08, PacketDirection.ClientToServerEvent)
+export class BeginBlockPacket extends Packet<void> {
+    static direction: typeof PacketDirection.ClientToServerEvent;
+}
+
+@Opcode(0x09, PacketDirection.ClientToServerEvent)
+export class EndBlockPacket extends Packet<void> {
+    static direction: typeof PacketDirection.ClientToServerEvent;
+}

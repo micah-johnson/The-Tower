@@ -39,10 +39,49 @@ export const tItemType = t.valueOf(ItemType);
 
 export type ItemType = typeof ItemType[keyof typeof ItemType];
 
+export const BlockReactionType = {
+  NONE: "none",
+  BREAK: "break",
+  DISABLE: "disable",
+} as const;
+
+export type BlockReactionType = typeof BlockReactionType[keyof typeof BlockReactionType];
+
+export const tBlockReaction = t.union(
+  t.interface({ type: t.literal(BlockReactionType.NONE) }),
+  t.interface({ type: t.literal(BlockReactionType.BREAK) }),
+  t.interface({
+    type: t.literal(BlockReactionType.DISABLE),
+    duration: t.number,
+    durabilityDamage: t.optional(t.number),
+  }),
+);
+
+export type BlockReaction = t.static<typeof tBlockReaction>;
+
+export const tBlockOutcome = t.interface({
+  damageMultiplier: t.optional(t.number),
+  counterDamage: t.optional(t.number),
+  reaction: t.optional(tBlockReaction),
+});
+
+export type BlockOutcome = t.static<typeof tBlockOutcome>;
+
+export const tBlockConfig = t.interface({
+  enabled: t.boolean,
+  parryWindowMs: t.number,
+  defenderPriority: t.optional(t.number),
+  parry: t.optional(tBlockOutcome),
+  block: t.optional(tBlockOutcome),
+});
+
+export type BlockConfig = t.static<typeof tBlockConfig>;
+
 // Item Sub Type
 export const ItemSubType = {
   [ItemType.WEAPON]: {
     SWORD: "Sword",
+    BOW: "Bow",
   },
   [ItemType.ARMOR]: {
     HELMET: "Helmet",
@@ -102,6 +141,7 @@ const tItemCommon = t.interface({
   rarity: tItemRarity,
   durability: t.number,
   effects: t.optional(t.array(tItemEffect)),
+  block: t.optional(tBlockConfig),
 });
 
 // Discriminated union at runtime: (type === X) ⇒ (subtype ∈ SubTypeFor<X>)
@@ -144,6 +184,8 @@ export const tItemInstance = t.interface({
   stack: t.number,
   attr: t.array(tAttributeModifier),
   effects: t.optional(t.array(tItemEffect)),
+  durability: t.optional(t.number),
+  block: t.optional(tBlockConfig),
 })
 
 export type ItemInstance = t.static<typeof tItemInstance>
