@@ -51,8 +51,14 @@ export class CombatHandler {
 
     handleSwing(player: ServerPlayerState) {
         if (this.canSwing(player)) {
-            player.combatState.setLastSwing(DateTime.now().UnixTimestampMillis)
-            playAnimation(player.player, itemRepository.get(player.inventoryState.getEquippedItem()!.id)!, AnimationAction.USE, 0, player.getAttributeValue(Attribute.ATTACK_SPEED))
+            player.combatState.setLastSwing(DateTime.now().UnixTimestampMillis);
+            playAnimation(
+                player.player,
+                itemRepository.get(player.inventoryState.getEquippedItem()!.id)!,
+                AnimationAction.USE,
+                0,
+                player.getAttributeValue(Attribute.ATTACK_SPEED),
+            );
         }
     }
 
@@ -61,7 +67,7 @@ export class CombatHandler {
     }
 
     canSwing(player: ServerPlayerState) {
-        return player.inventoryState.getEquippedItem() && !this.isSwinging(player)
+        return player.inventoryState.getEquippedItem() && !this.isSwinging(player) && !player.blockState.isBlockingActive()
     }
 
     canAttack(attacker: ServerPlayerState, victim: ServerPlayerState) {

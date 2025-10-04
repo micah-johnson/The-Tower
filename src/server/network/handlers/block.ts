@@ -6,6 +6,8 @@ class BlockHandlers {
     @ServerEventHandler(BeginBlockPacket)
     public static onBeginBlock(player: Player) {
         const state = playerRepository.getByPlayer(player);
+        print("err err err")
+
         if (!state) return;
 
         state.blockState.beginBlock();

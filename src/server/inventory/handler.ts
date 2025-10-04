@@ -2,57 +2,49 @@ import { combatHandler, playerRepository } from "../container";
 import { createItemToolInstance } from "../tools";
 
 // Equipped Item Handler
-playerRepository.Added.Connect(player => {
-    player.inventoryState.Changed.Connect(() => {
-        print("Changed!!")
-        if (!player.player.Character) {
-            return {
-                ok: false,
-                error: "Player character does not exist."
-            }
+playerRepository.Added.Connect((playerState) => {
+    playerState.inventoryState.Changed.Connect(() => {
+        const character = playerState.player.Character;
+        if (!character) {
+            warn(`[Inventory] Unable to sync tools for ${playerState.player.Name}: no character`);
+            return;
         }
 
-        const item = player.inventoryState.getEquippedItem()
-
-        print(item)
-
+        const item = playerState.inventoryState.getEquippedItem();
         if (!item) {
-            // Unequip all tools
-            for (const child of player.player.Character.GetChildren()) {
+            for (const child of character.GetChildren()) {
                 if (child.IsA("Tool")) {
-                    child.Destroy()
+                    child.Destroy();
                 }
             }
-
-            return {
-                ok: true
-            }
+            return;
         }
 
-        const tool = createItemToolInstance(item, combatHandler)
+        let alreadyEquipped = false;
+        for (const child of character.GetChildren()) {
+            if (!child.IsA("Tool")) {
+                continue;
+            }
 
+            if (child.GetAttribute("uuid") === item.uuid) {
+                alreadyEquipped = true;
+                continue;
+            }
+
+            child.Destroy();
+        }
+
+        if (alreadyEquipped) {
+            return;
+        }
+
+        const tool = createItemToolInstance(item, combatHandler);
         if (!tool) {
-            return {
-                ok: false,
-                error: "Unable to create tool instance."
-            }
+            warn(`[Inventory] Failed to create tool instance for ${item.id}`);
+            return;
         }
 
-        combatHandler.register(tool)
-
-        // Handle equipped tools
-        for (const child of player.player.Character.GetChildren()) {
-            if (child.IsA("Tool")) {
-                if (child.GetAttribute("uuid") === item.uuid) { // If tool already equipped, return
-                    return {
-                        ok: true
-                    }
-                }
-
-                child.Destroy() // Otherwise destroy equipped tool
-            }
-        }
-
-        tool.Parent = player.player.Character
-    })
-})
+        combatHandler.register(tool);
+        tool.Parent = character;
+    });
+});

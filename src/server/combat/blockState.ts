@@ -20,6 +20,7 @@ export class ServerBlockState {
     private currentItemUuid?: string;
     private modifierDisposer?: () => void;
     private disabledUntil = new Map<string, number>();
+    private movementApplied = false;
 
     constructor(
         private readonly owner: ServerPlayerState,
@@ -77,6 +78,8 @@ export class ServerBlockState {
             },
         });
 
+        this.applyMovementModifier();
+
         return { ok: true };
     }
 
@@ -91,17 +94,21 @@ export class ServerBlockState {
         this.currentConfig = undefined;
         this.currentItemUuid = undefined;
 
+        this.clearMovementModifier();
+
         if (wasBlocking) {
             print(`[Block] ${this.owner.player.Name} stopped blocking`);
         }
-
-        print(`[Block] {self.owner.player.Name} stopped blocking`);
     }
 
     onEquippedChanged(equipped: ItemInstance | undefined) {
         if (!equipped || equipped.uuid !== this.currentItemUuid) {
             this.endBlock();
         }
+    }
+
+    isBlockingActive() {
+        return this.isBlocking;
     }
 
     private resolveConfig(item: ItemInstance): BlockConfig | undefined {
@@ -182,5 +189,30 @@ export class ServerBlockState {
             }
             this.endBlock();
         }
+    }
+
+    private applyMovementModifier() {
+        if (this.movementApplied) {
+            return;
+        }
+
+        this.owner.movementState.setModifier({
+            id: "block",
+            priority: 100,
+            compute(speed) {
+                return speed * 0.5;
+            },
+        });
+
+        this.movementApplied = true;
+    }
+
+    private clearMovementModifier() {
+        if (!this.movementApplied) {
+            return;
+        }
+
+        this.owner.movementState.removeModifier("block");
+        this.movementApplied = false;
     }
 }

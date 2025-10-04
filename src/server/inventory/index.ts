@@ -1,6 +1,7 @@
 import { HttpService, RunService } from "@rbxts/services";
 import { ItemEffectType, ItemInstance } from "../../shared/items";
 import { itemRepository } from "../../shared/items/repository";
+import { isSlotEquippable } from "../../shared/items/util";
 import { cloneBlockConfig } from "../../shared/items/blockDefaults";
 import {
     MoveItemsRequest as MoveItemsRequest,
@@ -116,6 +117,7 @@ export class ServerInventoryState extends InventoryState {
         }
 
         const current = this.slots.getByKey(slot);
+        const previousEquippedSlot = this.equippedSlot;
 
         if (normalizedItemUuid === undefined) {
             if (!current) {
@@ -123,6 +125,11 @@ export class ServerInventoryState extends InventoryState {
             }
 
             this.slots.deleteByKey(slot);
+            if (previousEquippedSlot === slot) {
+                this.equippedSlot = undefined;
+                this.refreshEquippedModifiers();
+            }
+
             if (!skipSync) this.bumpAndSync();
             return { ok: true };
         }
@@ -136,13 +143,28 @@ export class ServerInventoryState extends InventoryState {
             if (uuid === normalizedItemUuid) {
                 displacedSlots.push(slotId);
             }
-        })
+        });
 
+        let equippedWasDisplaced = false;
         for (const displaced of displacedSlots) {
             this.slots.deleteByKey(displaced);
+            if (displaced === previousEquippedSlot) {
+                equippedWasDisplaced = true;
+            }
         }
 
         this.slots.set(slot, normalizedItemUuid);
+
+        let nextEquippedSlot = previousEquippedSlot;
+        if (equippedWasDisplaced) {
+            nextEquippedSlot = isSlotEquippable(slot) ? slot : undefined;
+        }
+
+        if (nextEquippedSlot !== previousEquippedSlot) {
+            this.equippedSlot = nextEquippedSlot;
+            this.refreshEquippedModifiers();
+        }
+
         if (!skipSync) this.bumpAndSync();
         return { ok: true };
     }

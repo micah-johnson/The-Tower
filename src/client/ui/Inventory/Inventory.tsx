@@ -4,7 +4,7 @@ import { Toggleable } from "../components/Toggleable";
 import { useInventoryVersion } from "../../hooks/inventory";
 import { useItemDragging } from "../context/ItemDraggingContext";
 import { ClientNet } from "../../network";
-import { MoveItemsPacket } from "../../../shared/network";
+import { MoveItemsPacket, ResponseOf } from "../../../shared/network";
 import { Divider } from "../components/Divider";
 import { TextInput } from "../components/interaction/TextInput";
 import { itemRepository } from "../../../shared/items/repository";
@@ -18,14 +18,32 @@ export function Inventory() {
     const [ search, setSearch ] = useState("")
 
     function handleMouseUp() {
-        if (dragState) {
-            task.spawn(() => {
-                ClientNet.requestServer(MoveItemsPacket, [{
-                    itemUuid: dragState.itemUuid,
-                    slot: playerInventory.getNewInventorySlot()
-                }])
-            })
+        if (!dragState) {
+            return;
         }
+
+        const fallbackSlot = playerInventory.getNewInventorySlot();
+
+        task.spawn(() => {
+            const [success, result] = pcall(() =>
+                ClientNet.requestServer(MoveItemsPacket, [
+                    {
+                        itemUuid: dragState.itemUuid,
+                        slot: fallbackSlot,
+                    },
+                ]),
+            );
+
+            if (!success) {
+                warn(`[Inventory] Failed to move dragged item: ${result}`);
+                return;
+            }
+
+            const response = result as ResponseOf<typeof MoveItemsPacket>;
+            if (!response.ok) {
+                warn(`[Inventory] Move rejected: ${response.error ?? "unknown error"}`);
+            }
+        });
     }
 
     let slots = playerInventory.getInventorySlots()

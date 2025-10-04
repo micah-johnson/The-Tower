@@ -28,11 +28,10 @@ function syncHumanoid(playerState: ServerPlayerState) {
 		const health = playerState.getAttributeValue(Attribute.HEALTH)
 		const speed = playerState.getAttributeValue(Attribute.SPEED)
 
-		if (humanoid.MaxHealth !== health) {
-			humanoid.MaxHealth = health
-			humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
-			humanoid.WalkSpeed = speed
-		}
+		humanoid.MaxHealth = health
+		humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
+		playerState.movementState.attachHumanoid(humanoid)
+		playerState.movementState.setBaseSpeed(speed)
 }
 
 Workspace.ChildAdded.Connect(child => {
