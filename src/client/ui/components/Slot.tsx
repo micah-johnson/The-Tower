@@ -37,8 +37,8 @@ export function Slot(props: {
     const ref = props.forwardRef ?? internalRef;
     const strokeRef = useRef<UIStroke>()
 
-    const [backgroundColor, setBackgroundColor] = useTweenableState(ref, "BackgroundColor3", color, new TweenInfo(0.1, Enum.EasingStyle.Linear))
-    const [borderColor, setBorderColor] = useTweenableState(strokeRef, "Color", color, new TweenInfo(0.1, Enum.EasingStyle.Linear))
+    const [backgroundColor, setBackgroundColor] = useTweenableState(ref, "BackgroundColor3", color, new TweenInfo(0.05, Enum.EasingStyle.Linear))
+    const [borderColor, setBorderColor] = useTweenableState(strokeRef, "Color", color, new TweenInfo(0.05, Enum.EasingStyle.Linear))
 
     const [transparency, setTransparency] = useTweenableState(ref, "BackgroundTransparency", 0.9, new TweenInfo(0.05, Enum.EasingStyle.Linear))
 

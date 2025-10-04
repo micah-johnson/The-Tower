@@ -1,9 +1,15 @@
 import { AnimationAction, getAnimations } from "../../shared/consts/animations";
 import { ItemDef, ItemInstance } from "../../shared/items"
 
-export function playAnimation(player: Player, item: ItemDef, action: AnimationAction, index: number, targetLength: number) {
-    print(player, item, action, index, targetLength)
-    const humanoid = player?.Character?.FindFirstChild("Humanoid") as Humanoid | undefined
+export function playAnimation(props: {
+    player: Player, 
+    item: ItemDef, 
+    action: AnimationAction, 
+    index: number, 
+    targetLength?: number, 
+    reverse?: boolean
+}) {
+    const humanoid = props.player?.Character?.FindFirstChild("Humanoid") as Humanoid | undefined
 
     if (!humanoid) return
 
@@ -14,7 +20,7 @@ export function playAnimation(player: Player, item: ItemDef, action: AnimationAc
         animator.Parent = humanoid
     }
 
-    const animationId = getAnimations(item, action)?.[index]
+    const animationId = getAnimations(props.item, props.action)?.[props.index]
 
     print(animationId)
     
@@ -32,13 +38,13 @@ export function playAnimation(player: Player, item: ItemDef, action: AnimationAc
 
     print("Metadata")
 
-	const animationLength = track.Length; // seconds at speed=1
+	const animationLength = track.Length;
 
-    const ratio = (animationLength * 1000) / targetLength // convert animation length to ms
+    const ratio = props.targetLength ? (animationLength * 1000) / props.targetLength : 1
 
     track.Priority = Enum.AnimationPriority.Action
-
-    print(ratio, track.Animation?.AnimationId)
     
-    track.Play(0, undefined, ratio)
+    if (props.reverse) track.TimePosition = track.Length
+    
+    track.Play(0, undefined, props.reverse ? -ratio : ratio)
 }

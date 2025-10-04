@@ -32,6 +32,7 @@ export class ServerDamageCoordinator {
 					applied: queuedContext.applied ?? false,
 					cancelled: queuedContext.cancelled ?? false,
 				};
+				
 				queue.push(clone);
 			};
 

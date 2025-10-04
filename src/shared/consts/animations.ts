@@ -2,7 +2,8 @@ import { ItemDef, ItemSubType, ItemType, SubTypeFor } from "../items";
 
 export enum AnimationAction {
     IDLE,
-    USE
+    LMB,
+    RMB
 }
 
 type AnimationDefinitions = {
@@ -12,7 +13,8 @@ type AnimationDefinitions = {
 export const ANIMATIONS: AnimationDefinitions = {
     [ItemType.WEAPON]: {
         [ItemSubType[ItemType.WEAPON].SWORD]: {
-            [AnimationAction.USE]: ["rbxassetid://118626485121462"]
+            [AnimationAction.LMB]: ["rbxassetid://118626485121462"],
+            [AnimationAction.RMB]: ["rbxassetid://73420867539276"]
         }
     },
 }

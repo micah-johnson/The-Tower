@@ -52,13 +52,13 @@ export class CombatHandler {
     handleSwing(player: ServerPlayerState) {
         if (this.canSwing(player)) {
             player.combatState.setLastSwing(DateTime.now().UnixTimestampMillis);
-            playAnimation(
-                player.player,
-                itemRepository.get(player.inventoryState.getEquippedItem()!.id)!,
-                AnimationAction.USE,
-                0,
-                player.getAttributeValue(Attribute.ATTACK_SPEED),
-            );
+            playAnimation({
+                player: player.player,
+                item: itemRepository.get(player.inventoryState.getEquippedItem()!.id)!,
+                action: AnimationAction.LMB,
+                index: 0,
+                targetLength: player.getAttributeValue(Attribute.ATTACK_SPEED)
+            });
         }
     }
 
