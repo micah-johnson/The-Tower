@@ -9,6 +9,8 @@ import { AnimationAction } from "../../shared/consts/animations";
 import { itemRepository } from "../../shared/items/repository";
 import { t } from "@rbxts/t";
 
+const MAX_SWING_DISTANCE = 14;
+
 export class CombatHandler {
     constructor(
         private readonly playerRepository: PlayerRepository,
@@ -56,65 +58,78 @@ export class CombatHandler {
 
         // --- compute real-time windows correctly ---
         const nowMs = DateTime.now().UnixTimestampMillis;
-        const speed = math.max(1e-6, math.abs(track.Speed)); // avoid div-by-zero
-        const pos = track.TimePosition;                       // seconds
+        const speed = math.max(1e-6, math.abs(track.Speed));
+        const pos = track.TimePosition;
 
-        const tStart = track.GetTimeOfKeyframe("DamageStart"); // seconds on clip
-        const tEnd   = track.GetTimeOfKeyframe("DamageEnd");
+        const tStart = track.GetTimeOfKeyframe("DamageStart");
+        const tEnd = track.GetTimeOfKeyframe("DamageEnd");
 
-        // time until each marker in seconds, then to ms
         const startDelayMs = math.max(0, ((tStart - pos) / speed) * 1000);
-        const endDelayMs   = math.max(0, ((tEnd   - pos) / speed) * 1000);
+        const endDelayMs = math.max(0, ((tEnd - pos) / speed) * 1000);
 
         const startWindow = nowMs + startDelayMs;
-        const endWindow   = nowMs + endDelayMs;
+        const endWindow = nowMs + endDelayMs;
 
-        let trail = handle.FindFirstChild("Trail") as Trail | undefined;
+        const trail = handle.FindFirstChild("Trail") as Trail | undefined;
+        const hitVictims = new Set<number>();
 
-        let windowOpened = false
+        const processVictimState = (victimState: ServerPlayerState | undefined) => {
+            if (!victimState) return;
+            if (victimState.player === player.player) return;
+            const userId = victimState.player.UserId;
+            if (hitVictims.has(userId)) return;
+            if (!this.isSwinging(player)) return;
+            if (!this.canAttack(player, victimState)) return;
+            if (!this.isWithinSwingRange(player, victimState, handle)) return;
 
-        let conn = RunService.Heartbeat.Connect(() => {
-            if (DateTime.now().UnixTimestampMillis >= endWindow) {
-                if (trail) trail.Enabled = false
-                conn.Disconnect()
-            } else if (DateTime.now().UnixTimestampMillis >= startWindow) {
-                if (trail) trail.Enabled = true
+            this.handleTouch(player, victimState);
+            hitVictims.add(userId);
+        };
 
-                if (!windowOpened) {
-                    for (const other of handle.GetTouchingParts()) {
-                        const victim = getPlayerFromChild(other)
+        const processPart = (part: BasePart) => {
+            const victimPlayer = getPlayerFromChild(part);
+            if (!victimPlayer) return;
+            processVictimState(this.playerRepository.getByPlayer(victimPlayer));
+        };
 
-                        if (!victim || victim === player.player) continue;
-
-                        const victimState = this.playerRepository.getByPlayer(victim)
-
-                        if (!player || !victimState) continue;
-
-                        this.handleTouch(player, victimState)
-                    }
+        const processContacts = () => {
+            for (const other of handle.GetTouchingParts()) {
+                if (other.IsA("BasePart")) {
+                    processPart(other);
                 }
+            }
+        };
 
-                windowOpened = true
+        let windowActive = false;
+
+        const heartbeatConn = RunService.Heartbeat.Connect(() => {
+            const currentTime = DateTime.now().UnixTimestampMillis;
+            if (currentTime >= endWindow) {
+                if (trail) trail.Enabled = false;
+                heartbeatConn.Disconnect();
+                windowActive = false;
+                return;
+            }
+
+            if (currentTime >= startWindow) {
+                if (trail) trail.Enabled = true;
+                windowActive = true;
+                processContacts();
             }
         });
 
-        const listener = handle.Touched.Connect(other => {
-            if (DateTime.now().UnixTimestampMillis > startWindow && DateTime.now().UnixTimestampMillis < endWindow) {
-                const victim = getPlayerFromChild(other)
-
-                if (!victim) return;
-
-                const victimState = this.playerRepository.getByPlayer(victim)
-
-                if (!player || !victimState) return;
-
-                this.handleTouch(player, victimState)
-            }
-        })
+        const listener = handle.Touched.Connect((other) => {
+            if (!windowActive) return;
+            if (!other.IsA("BasePart")) return;
+            processPart(other);
+        });
 
         track.Ended.Connect(() => {
-            listener.Disconnect()
-        })
+            if (trail) trail.Enabled = false;
+            windowActive = false;
+            listener.Disconnect();
+            heartbeatConn.Disconnect();
+        });
     }
 
     isSwinging(player: ServerPlayerState) {
@@ -156,6 +171,25 @@ export class CombatHandler {
             this.applyKnockback(attacker.player, victim.player)
             victim.combatState.setLastDamaged(attacker.player, DateTime.now().UnixTimestampMillis)
         }
+    }
+
+    private isWithinSwingRange(attacker: ServerPlayerState, victim: ServerPlayerState, handle: BasePart) {
+        const attackerRoot = attacker.player.Character?.FindFirstChild("HumanoidRootPart") as BasePart | undefined;
+        const victimRoot = victim.player.Character?.FindFirstChild("HumanoidRootPart") as BasePart | undefined;
+
+        if (attackerRoot && victimRoot) {
+            if (attackerRoot.Position.sub(victimRoot.Position).Magnitude <= MAX_SWING_DISTANCE) {
+                return true;
+            }
+        }
+
+        if (victimRoot) {
+            if (victimRoot.Position.sub(handle.Position).Magnitude <= MAX_SWING_DISTANCE) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     applyKnockback(

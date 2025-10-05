@@ -1,16 +1,18 @@
 import { BeginBlockPacket, EndBlockPacket } from "../../../shared/network";
+import type { BeginBlockRequest, BlockActionResponse } from "../../../shared/network";
 import { playerRepository } from "../../container";
-import { ServerEventHandler } from "../decorators";
+import { ServerEventHandler, ServerRequestHandler } from "../decorators";
 
 class BlockHandlers {
-    @ServerEventHandler(BeginBlockPacket)
-    public static onBeginBlock(player: Player) {
+    @ServerRequestHandler(BeginBlockPacket)
+    public static onBeginBlock(player: Player, payload: BeginBlockRequest): BlockActionResponse {
         const state = playerRepository.getByPlayer(player);
-        print("err err err")
+        if (!state) {
+            return { ok: false, error: "Player not registered" };
+        }
 
-        if (!state) return;
-
-        state.blockState.beginBlock();
+        const result = state.blockState.beginBlock(payload?.clientTimestamp);
+        return { ok: result.ok, error: result.reason };
     }
 
     @ServerEventHandler(EndBlockPacket)

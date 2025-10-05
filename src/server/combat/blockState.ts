@@ -9,6 +9,7 @@ import { playAnimation } from "./animation";
 import { AnimationAction } from "../../shared/consts/animations";
 
 const DEFAULT_BLOCK_PRIORITY = 50;
+const MAX_CLIENT_BLOCK_BACKDATE_MS = 150;
 
 interface BlockResult {
     ok: boolean;
@@ -30,7 +31,7 @@ export class ServerBlockState {
         private readonly coordinator: ServerDamageCoordinator,
     ) {}
 
-    beginBlock(): BlockResult {
+    beginBlock(clientTimestamp?: number): BlockResult {
         const equipped = this.inventory.getEquippedItem();
         if (!equipped) {
             return { ok: false, reason: "No item equipped" };
@@ -58,8 +59,9 @@ export class ServerBlockState {
             freeze: true
         });
 
+        const serverNow = DateTime.now().UnixTimestampMillis;
         this.isBlocking = true;
-        this.blockStart = DateTime.now().UnixTimestampMillis;
+        this.blockStart = this.computeBlockStart(serverNow, clientTimestamp);
         this.currentConfig = config;
         this.currentItemUuid = equipped.uuid;
 
@@ -123,6 +125,20 @@ export class ServerBlockState {
         if (wasBlocking) {
             print(`[Block] ${this.owner.player.Name} stopped blocking`);
         }
+    }
+
+    private computeBlockStart(serverNow: number, clientTimestamp?: number) {
+        if (!clientTimestamp) {
+            return serverNow;
+        }
+
+        const delta = serverNow - clientTimestamp;
+        if (delta <= 0) {
+            return serverNow;
+        }
+
+        const backdate = math.min(delta, MAX_CLIENT_BLOCK_BACKDATE_MS);
+        return serverNow - backdate;
     }
 
     onEquippedChanged(equipped: ItemInstance | undefined) {

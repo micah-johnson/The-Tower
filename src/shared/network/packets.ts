@@ -222,10 +222,20 @@ export class DropItemPacket extends Packet<void, DropItemResponse> {}
 @Opcode(0x07, PacketDirection.ClientToServerRequest)
 export class SwingItemPacket extends Packet {}
 
-@Opcode(0x08, PacketDirection.ClientToServerEvent)
-export class BeginBlockPacket extends Packet<void> {
-    static direction: typeof PacketDirection.ClientToServerEvent;
-}
+const tBeginBlockRequest = t.optional(t.strictInterface({
+    clientTimestamp: t.optional(t.number),
+}));
+
+const tBlockActionResponse = t.strictInterface({
+    ok: t.boolean,
+    error: t.optional(t.string),
+});
+
+export type BeginBlockRequest = t.static<typeof tBeginBlockRequest>;
+export type BlockActionResponse = t.static<typeof tBlockActionResponse>;
+
+@Opcode(0x08, PacketDirection.ClientToServerRequest, { validator: tBeginBlockRequest })
+export class BeginBlockPacket extends Packet<BeginBlockRequest, BlockActionResponse> {}
 
 @Opcode(0x09, PacketDirection.ClientToServerEvent)
 export class EndBlockPacket extends Packet<void> {
