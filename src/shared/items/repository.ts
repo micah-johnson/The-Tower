@@ -63,7 +63,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
-        enchant: { comboTier: 3, swiftComboTier: 3 },
+        enchant: { comboTier: 3, swiftComboTier: 3, realityBreakTier: 3 },
     },
     {
         id: "sword",
@@ -90,7 +90,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
-        enchant: { comboTier: 1, swiftComboTier: 1 },
+        enchant: { comboTier: 1, swiftComboTier: 1, realityBreakTier: 1 },
     },
     {
         id: "rare_sword",
@@ -120,7 +120,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
-        enchant: { comboTier: 2, swiftComboTier: 2 },
+        enchant: { comboTier: 2, swiftComboTier: 2, realityBreakTier: 2 },
     },
     {
         id: "epic_sword",
@@ -150,7 +150,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
-        enchant: { comboTier: 3, swiftComboTier: 3 },
+        enchant: { comboTier: 3, swiftComboTier: 3, realityBreakTier: 3 },
     },
     {
         id: "legendary_sword",
@@ -180,7 +180,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
-        enchant: { comboTier: 3, swiftComboTier: 3 },
+        enchant: { comboTier: 3, swiftComboTier: 3, realityBreakTier: 3 },
     },
     {
         id: "chair",

@@ -3,6 +3,8 @@ export type { ServerDamageContext } from "./damageCoordinator";
 
 export class ServerCombatState extends CombatState {
     player: Player
+    private lastSwingCooldown = 0;
+    private nextSwingSpeedMultiplier?: number;
 
     constructor(player: Player) {
         super()
@@ -15,9 +17,33 @@ export class ServerCombatState extends CombatState {
         this.bumpAndSync()
     }
 
-    setLastSwing(time: number) {
+    setLastSwing(time: number, cooldown?: number) {
         this.lastSwing = time
+        if (cooldown !== undefined && cooldown > 0) {
+            this.lastSwingCooldown = cooldown
+        } else if (cooldown !== undefined) {
+            this.lastSwingCooldown = 0
+        }
         this.bumpAndSync()
+    }
+
+    getLastSwingCooldown() {
+        return this.lastSwingCooldown > 0 ? this.lastSwingCooldown : undefined
+    }
+
+    setNextSwingSpeedMultiplier(multiplier: number) {
+        if (multiplier <= 0) {
+            this.nextSwingSpeedMultiplier = undefined
+            return
+        }
+
+        this.nextSwingSpeedMultiplier = multiplier
+    }
+
+    consumeNextSwingSpeedMultiplier() {
+        const multiplier = this.nextSwingSpeedMultiplier
+        this.nextSwingSpeedMultiplier = undefined
+        return multiplier
     }
 
     private bumpAndSync() {

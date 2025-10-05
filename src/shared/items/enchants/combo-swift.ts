@@ -11,6 +11,7 @@ import {
 	matchItemTypes,
 } from ".";
 import { MovementContextToken, PlayerContextToken } from "./contextTokens";
+import { registerEnchantLore } from "./lore";
 
 import type { ServerMovementState, MovementModifier } from "../../../server/movement";
 
@@ -71,6 +72,8 @@ export function getComboSwiftLore(tier: ComboSwiftTier) {
 		description: `Every ${ordinal(config.cadence)} hit increases Speed by ${bonusPercent}% for ${roundedDuration}s.`,
 	};
 }
+
+registerEnchantLore("swiftComboTier", (tier) => getComboSwiftLore(tier as ComboSwiftTier));
 
 @Enchant({
 	phase: EnchantPhase.PostHit,

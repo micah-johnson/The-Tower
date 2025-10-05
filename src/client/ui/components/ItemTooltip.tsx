@@ -1,11 +1,19 @@
-import React, { useMemo, useRef, useState, useEffect } from "@rbxts/react";
-import { UserInputService, Players, Workspace } from "@rbxts/services";
+import React, { useMemo, useRef, useState } from "@rbxts/react";
+import { TextService, UserInputService } from "@rbxts/services";
 import { Attribute, AttributeModifier, ItemDef, ItemInstance } from "../../../shared/items";
 import { RARITY_COLORS } from "../../../shared/consts/colors";
 import { itemRepository } from "../../../shared/items/repository";
 import { Divider } from "./Divider";
-import { getComboStrikeLore } from "../../../shared/items/enchants/combo-damage";
-import { getComboSwiftLore } from "../../../shared/items/enchants/combo-swift";
+import { getEnchantLoreEntries } from "../../../shared/items/enchants/lore";
+
+const H_PADDING = 6;
+const MIN_WIDTH = 160;
+const MAX_WIDTH = 260;
+
+function measureTextWidth(text: string, size: number) {
+    const result = TextService.GetTextSize(text, size, Enum.Font.Gotham, new Vector2(1000, 1000));
+    return result.X;
+}
 
 export function ItemTooltip(props: {
     item: ItemInstance
@@ -42,10 +50,37 @@ export function ItemTooltip(props: {
 
     const color = RARITY_COLORS[itemDef.rarity]
 
-    const comboTier = itemDef?.enchant?.comboTier;
-    const comboLore = comboTier ? getComboStrikeLore(comboTier) : undefined;
-    const swiftTier = itemDef?.enchant?.swiftComboTier ?? comboTier;
-    const comboSwiftLore = swiftTier ? getComboSwiftLore(swiftTier) : undefined;
+    const enchantLore = useMemo(() => getEnchantLoreEntries(itemDef.enchant), [itemDef]);
+
+    const tooltipWidth = useMemo(() => {
+        const texts = new Array<[string, number]>();
+
+        const nameText = `${itemDef.name}${props.item.stack > 1 ? ` (x${props.item.stack})` : ""}`;
+        texts.push([nameText, 14]);
+        texts.push([itemDef.description, 14]);
+
+        itemDef.attr.forEach((attr) => {
+            texts.push([attr.attribute, 14]);
+        });
+
+        props.item.attr.forEach((attr) => {
+            texts.push([attr.attribute, 14]);
+            texts.push([formatModText(attr), 14]);
+        });
+
+        enchantLore.forEach((entry) => {
+            texts.push([`${entry.name} (Tier ${entry.tier})`, 14]);
+            texts.push([entry.description, 13]);
+        });
+
+        let maxTextWidth = 0;
+        for (const [text, size] of texts) {
+            maxTextWidth = math.max(maxTextWidth, measureTextWidth(text, size));
+        }
+
+        const padded = maxTextWidth + H_PADDING * 2;
+        return math.clamp(padded, MIN_WIDTH, MAX_WIDTH);
+    }, [itemDef, props.item, enchantLore]);
 
     return (
         <>
@@ -64,7 +99,7 @@ export function ItemTooltip(props: {
                 ref={tooltipRef}
                 Visible={visible}
                 key="Tooltip"
-                Size={UDim2.fromOffset(150, 0)}
+                Size={UDim2.fromOffset(tooltipWidth, 0)}
                 Position={UDim2.fromOffset(0, -6)}
                 AnchorPoint={new Vector2(0, 1)}
                 AutomaticSize={Enum.AutomaticSize.Y}
@@ -76,12 +111,12 @@ export function ItemTooltip(props: {
                 <uicorner CornerRadius={new UDim(0,3)} />
                 <uilistlayout FillDirection={Enum.FillDirection.Vertical} ItemLineAlignment={"Center"} SortOrder={"LayoutOrder"} Padding={new UDim(0,5 )}/>
 
-                <frame Size={UDim2.fromScale(1,0)} AutomaticSize={Enum.AutomaticSize.Y} BackgroundTransparency={1}>
+                <frame Size={UDim2.fromOffset(tooltipWidth - H_PADDING * 2,0)} AutomaticSize={Enum.AutomaticSize.Y} BackgroundTransparency={1}>
                     <uilistlayout FillDirection={Enum.FillDirection.Vertical} SortOrder={"LayoutOrder"} Padding={new UDim(0,5)}/>
                     <uipadding PaddingBottom={new UDim(0,5)} />
                     <textlabel
                         RichText
-                        Size={UDim2.fromScale(1,0)}
+                        Size={UDim2.fromOffset(tooltipWidth - H_PADDING * 2,0)}
                         AutomaticSize={Enum.AutomaticSize.Y}
                         BackgroundTransparency={1}
                         TextXAlignment={Enum.TextXAlignment.Center}
@@ -95,7 +130,7 @@ export function ItemTooltip(props: {
 
                     <textlabel
                         RichText
-                        Size={UDim2.fromScale(1,0)}
+                        Size={UDim2.fromOffset(tooltipWidth - H_PADDING * 2,0)}
                         AutomaticSize={Enum.AutomaticSize.Y}
                         BackgroundTransparency={1}
                         TextXAlignment={Enum.TextXAlignment.Center}
@@ -109,76 +144,50 @@ export function ItemTooltip(props: {
                 </frame>
 
                 {itemDef.attr.map(attr => (
-                    <ItemAttribute attr={attr} />
+                    <ItemAttribute attr={attr} width={tooltipWidth - H_PADDING * 2} />
                 ))}
 
                 <Divider color={color} ZIndex={1001} PaddingTop={new UDim(0,5)} PaddingBottom={new UDim(0,5)}/>
 
                 {props.item.attr.map(attr => (
-                    <ItemAttribute attr={attr} />
+                    <ItemAttribute attr={attr} width={tooltipWidth - H_PADDING * 2} />
                 ))}
 
-                {comboLore && (
+                {enchantLore.size() > 0 && (
                     <>
                         <Divider color={color} ZIndex={1001} PaddingTop={new UDim(0,5)} PaddingBottom={new UDim(0,5)} />
-                        <frame Size={UDim2.fromScale(1,0)} AutomaticSize={Enum.AutomaticSize.Y} BackgroundTransparency={1}>
-                            <uilistlayout FillDirection={Enum.FillDirection.Vertical} Padding={new UDim(0,4)} />
-                            <textlabel
-                                BackgroundTransparency={1}
-                                Size={UDim2.fromScale(1,0)}
+                        {enchantLore.map((entry) => (
+                            <frame
+                                Size={UDim2.fromOffset(tooltipWidth - H_PADDING * 2, 0)}
                                 AutomaticSize={Enum.AutomaticSize.Y}
-                                Text={`${comboLore.name} (Tier ${comboLore.tier})`}
-                                TextColor3={color}
-                                FontFace={Font.fromName("Balthazar")}
-                                TextSize={14}
-                                ZIndex={1001}
-                                TextXAlignment={Enum.TextXAlignment.Left}
-                            />
-                            <textlabel
                                 BackgroundTransparency={1}
-                                Size={UDim2.fromScale(1,0)}
-                                AutomaticSize={Enum.AutomaticSize.Y}
-                                Text={comboLore.description}
-                                TextColor3={Color3.fromHex("#f5f5f5")}
-                                FontFace={Font.fromName("Balthazar")}
-                                TextSize={13}
-                                ZIndex={1001}
-                                TextWrapped
-                                TextXAlignment={Enum.TextXAlignment.Left}
-                            />
-                        </frame>
-                    </>
-                )}
-
-                {comboSwiftLore && (
-                    <>
-                        <Divider color={color} ZIndex={1001} PaddingTop={new UDim(0,5)} PaddingBottom={new UDim(0,5)} />
-                        <frame Size={UDim2.fromScale(1,0)} AutomaticSize={Enum.AutomaticSize.Y} BackgroundTransparency={1}>
-                            <uilistlayout FillDirection={Enum.FillDirection.Vertical} Padding={new UDim(0,4)} />
-                            <textlabel
-                                BackgroundTransparency={1}
-                                Size={UDim2.fromScale(1,0)}
-                                AutomaticSize={Enum.AutomaticSize.Y}
-                                Text={`${comboSwiftLore.name} (Tier ${comboSwiftLore.tier})`}
-                                TextColor3={color}
-                                FontFace={Font.fromName("Balthazar")}
-                                TextSize={14}
-                                ZIndex={1001}
-                                TextXAlignment={Enum.TextXAlignment.Left}
-                            />
-                            <textlabel
-                                BackgroundTransparency={1}
-                                Size={UDim2.fromScale(1,0)}
-                                AutomaticSize={Enum.AutomaticSize.Y}
-                                Text={comboSwiftLore.description}
-                                TextColor3={Color3.fromHex("#f5f5f5")}
-                                FontFace={Font.fromName("Balthazar")}
-                                TextSize={13}
-                                ZIndex={1001}
-                                TextWrapped
-                                TextXAlignment={Enum.TextXAlignment.Left}
-                            />
-                        </frame>
+                            >
+                                <uilistlayout FillDirection={Enum.FillDirection.Vertical} Padding={new UDim(0,4)} />
+                                <textlabel
+                                    BackgroundTransparency={1}
+                                    Size={UDim2.fromOffset(tooltipWidth - H_PADDING * 2, 0)}
+                                    AutomaticSize={Enum.AutomaticSize.Y}
+                                    Text={`${entry.name} (Tier ${entry.tier})`}
+                                    TextColor3={color}
+                                    FontFace={Font.fromName("Balthazar")}
+                                    TextSize={14}
+                                    ZIndex={1001}
+                                    TextXAlignment={Enum.TextXAlignment.Left}
+                                />
+                                <textlabel
+                                    BackgroundTransparency={1}
+                                    Size={UDim2.fromOffset(tooltipWidth - H_PADDING * 2, 0)}
+                                    AutomaticSize={Enum.AutomaticSize.Y}
+                                    Text={entry.description}
+                                    TextColor3={Color3.fromHex("#f5f5f5")}
+                                    FontFace={Font.fromName("Balthazar")}
+                                    TextSize={13}
+                                    ZIndex={1001}
+                                    TextWrapped
+                                    TextXAlignment={Enum.TextXAlignment.Left}
+                                />
+                            </frame>
+                        ))}
                     </>
                 )}
             </frame>
@@ -188,11 +197,11 @@ export function ItemTooltip(props: {
 
 
 
-export function ItemAttribute(props: { attr: AttributeModifier }) {
+export function ItemAttribute(props: { attr: AttributeModifier; width: number }) {
     const modText = formatModText(props.attr)
 
     return (
-        <frame Size={UDim2.fromScale(1,0)} AutomaticSize={Enum.AutomaticSize.Y} BackgroundTransparency={1}>
+        <frame Size={UDim2.fromOffset(props.width,0)} AutomaticSize={Enum.AutomaticSize.Y} BackgroundTransparency={1}>
             <uilistlayout FillDirection={Enum.FillDirection.Horizontal} HorizontalFlex={"SpaceBetween"} />
             <textlabel
                 AutomaticSize={Enum.AutomaticSize.XY}

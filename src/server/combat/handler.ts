@@ -38,14 +38,18 @@ export class CombatHandler {
     handleActivation(handle: Part, player: ServerPlayerState) {
         if (!this.canSwing(player)) return;
 
-        player.combatState.setLastSwing(DateTime.now().UnixTimestampMillis);
+        const baseAttackSpeed = math.max(player.getAttributeValue(Attribute.ATTACK_SPEED), 50);
+        const boostMultiplier = player.combatState.consumeNextSwingSpeedMultiplier() ?? 1;
+        const effectiveAttackSpeed = math.max(50, baseAttackSpeed / math.max(boostMultiplier, 1e-3));
+
+        player.combatState.setLastSwing(DateTime.now().UnixTimestampMillis, effectiveAttackSpeed);
 
         const track = playAnimation({
             player: player.player,
             item: itemRepository.get(player.inventoryState.getEquippedItem()!.id)!,
             action: AnimationAction.LMB,
             index: 0,
-            targetLength: player.getAttributeValue(Attribute.ATTACK_SPEED)
+            targetLength: effectiveAttackSpeed,
         });
 
         if (!track) return;
@@ -114,7 +118,9 @@ export class CombatHandler {
     }
 
     isSwinging(player: ServerPlayerState) {
-        return DateTime.now().UnixTimestampMillis - player.combatState.getLastSwing() < player.getAttributeValue(Attribute.ATTACK_SPEED)
+        const baseAttackSpeed = math.max(player.getAttributeValue(Attribute.ATTACK_SPEED), 50);
+        const cooldown = player.combatState.getLastSwingCooldown() ?? baseAttackSpeed;
+        return DateTime.now().UnixTimestampMillis - player.combatState.getLastSwing() < cooldown;
     }
 
     canSwing(player: ServerPlayerState) {
@@ -124,7 +130,9 @@ export class CombatHandler {
     canAttack(attacker: ServerPlayerState, victim: ServerPlayerState) {
         const lastDamaged = victim.combatState.getLastDamaged(attacker.player) ?? -1
 
-        return DateTime.now().UnixTimestampMillis - lastDamaged > attacker.getAttributeValue(Attribute.ATTACK_SPEED)
+        const baseAttackSpeed = math.max(attacker.getAttributeValue(Attribute.ATTACK_SPEED), 50);
+        const cooldown = attacker.combatState.getLastSwingCooldown() ?? baseAttackSpeed;
+        return DateTime.now().UnixTimestampMillis - lastDamaged > cooldown
     }
 
     handleTouch(attacker: ServerPlayerState, victim: ServerPlayerState) {

@@ -1,6 +1,7 @@
 import { DamageContext } from "../../combat";
 import { ItemSubType, ItemType } from "..";
 import { allOf, AbstractEnchant, createEnumProperty, Enchant, EnchantBinding, EnchantPhase, matchItemSubTypes, matchItemTypes } from ".";
+import { registerEnchantLore } from "./lore";
 
 interface ComboStrikeConfig {
 	readonly cadence: number;
@@ -51,6 +52,8 @@ export function getComboStrikeLore(tier: 1 | 2 | 3) {
 		description: `Every ${ordinal(config.cadence)} hit deals +${bonusPercent}% damage.`,
 	};
 }
+
+registerEnchantLore("comboTier", (tier) => getComboStrikeLore(tier as 1 | 2 | 3));
 
 @Enchant({
 	phase: EnchantPhase.Attacker,
