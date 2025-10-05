@@ -1,4 +1,4 @@
-import { Debris, Players } from "@rbxts/services";
+import { Debris, Players, RunService } from "@rbxts/services";
 import { Attribute } from "../../shared/items";
 import type { PlayerRepository } from "../player/repository";
 import { ServerPlayerState } from "../player";
@@ -50,8 +50,49 @@ export class CombatHandler {
 
         if (!track) return;
 
-        const startWindow = DateTime.now().UnixTimestampMillis + track.GetTimeOfKeyframe("DamageStart") * track.Speed * 1000
-        const endWindow = DateTime.now().UnixTimestampMillis + track.GetTimeOfKeyframe("DamageEnd") * track.Speed * 1000
+        // --- compute real-time windows correctly ---
+        const nowMs = DateTime.now().UnixTimestampMillis;
+        const speed = math.max(1e-6, math.abs(track.Speed)); // avoid div-by-zero
+        const pos = track.TimePosition;                       // seconds
+
+        const tStart = track.GetTimeOfKeyframe("DamageStart"); // seconds on clip
+        const tEnd   = track.GetTimeOfKeyframe("DamageEnd");
+
+        // time until each marker in seconds, then to ms
+        const startDelayMs = math.max(0, ((tStart - pos) / speed) * 1000);
+        const endDelayMs   = math.max(0, ((tEnd   - pos) / speed) * 1000);
+
+        const startWindow = nowMs + startDelayMs;
+        const endWindow   = nowMs + endDelayMs;
+
+        let trail = handle.FindFirstChild("Trail") as Trail | undefined;
+
+        let windowOpened = false
+
+        let conn = RunService.Heartbeat.Connect(() => {
+            if (DateTime.now().UnixTimestampMillis >= endWindow) {
+                if (trail) trail.Enabled = false
+                conn.Disconnect()
+            } else if (DateTime.now().UnixTimestampMillis >= startWindow) {
+                if (trail) trail.Enabled = true
+
+                if (!windowOpened) {
+                    for (const other of handle.GetTouchingParts()) {
+                        const victim = getPlayerFromChild(other)
+
+                        if (!victim || victim === player.player) continue;
+
+                        const victimState = this.playerRepository.getByPlayer(victim)
+
+                        if (!player || !victimState) continue;
+
+                        this.handleTouch(player, victimState)
+                    }
+                }
+
+                windowOpened = true
+            }
+        });
 
         const listener = handle.Touched.Connect(other => {
             if (DateTime.now().UnixTimestampMillis > startWindow && DateTime.now().UnixTimestampMillis < endWindow) {

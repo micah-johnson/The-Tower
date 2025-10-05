@@ -136,10 +136,12 @@ const tComboTier = t.union(t.literal(1), t.literal(2), t.literal(3));
 
 export interface ItemEnchantConfig {
 	comboTier?: 1 | 2 | 3;
+	swiftComboTier?: 1 | 2 | 3;
 }
 
 const tItemEnchantConfig = t.interface({
 	comboTier: t.optional(tComboTier),
+	swiftComboTier: t.optional(tComboTier),
 });
 
 // Common item fields (without type/subtype so we can intersect in discriminated union)

@@ -5,6 +5,7 @@ import { RARITY_COLORS } from "../../../shared/consts/colors";
 import { itemRepository } from "../../../shared/items/repository";
 import { Divider } from "./Divider";
 import { getComboStrikeLore } from "../../../shared/items/enchants/combo-damage";
+import { getComboSwiftLore } from "../../../shared/items/enchants/combo-swift";
 
 export function ItemTooltip(props: {
     item: ItemInstance
@@ -43,6 +44,8 @@ export function ItemTooltip(props: {
 
     const comboTier = itemDef?.enchant?.comboTier;
     const comboLore = comboTier ? getComboStrikeLore(comboTier) : undefined;
+    const swiftTier = itemDef?.enchant?.swiftComboTier ?? comboTier;
+    const comboSwiftLore = swiftTier ? getComboSwiftLore(swiftTier) : undefined;
 
     return (
         <>
@@ -136,6 +139,38 @@ export function ItemTooltip(props: {
                                 Size={UDim2.fromScale(1,0)}
                                 AutomaticSize={Enum.AutomaticSize.Y}
                                 Text={comboLore.description}
+                                TextColor3={Color3.fromHex("#f5f5f5")}
+                                FontFace={Font.fromName("Balthazar")}
+                                TextSize={13}
+                                ZIndex={1001}
+                                TextWrapped
+                                TextXAlignment={Enum.TextXAlignment.Left}
+                            />
+                        </frame>
+                    </>
+                )}
+
+                {comboSwiftLore && (
+                    <>
+                        <Divider color={color} ZIndex={1001} PaddingTop={new UDim(0,5)} PaddingBottom={new UDim(0,5)} />
+                        <frame Size={UDim2.fromScale(1,0)} AutomaticSize={Enum.AutomaticSize.Y} BackgroundTransparency={1}>
+                            <uilistlayout FillDirection={Enum.FillDirection.Vertical} Padding={new UDim(0,4)} />
+                            <textlabel
+                                BackgroundTransparency={1}
+                                Size={UDim2.fromScale(1,0)}
+                                AutomaticSize={Enum.AutomaticSize.Y}
+                                Text={`${comboSwiftLore.name} (Tier ${comboSwiftLore.tier})`}
+                                TextColor3={color}
+                                FontFace={Font.fromName("Balthazar")}
+                                TextSize={14}
+                                ZIndex={1001}
+                                TextXAlignment={Enum.TextXAlignment.Left}
+                            />
+                            <textlabel
+                                BackgroundTransparency={1}
+                                Size={UDim2.fromScale(1,0)}
+                                AutomaticSize={Enum.AutomaticSize.Y}
+                                Text={comboSwiftLore.description}
                                 TextColor3={Color3.fromHex("#f5f5f5")}
                                 FontFace={Font.fromName("Balthazar")}
                                 TextSize={13}

@@ -20,7 +20,8 @@ import type { PlayerProfile } from "../profiles";
 import type { ServerPlayerState } from "../player";
 import { InventoryState } from "../../shared/inventory";
 import type { ServerDamageCoordinator } from "../combat/damageCoordinator";
-import { collectEnchantHooks, createBinding, EnchantPhase, EnchantPhaseId, createContextToken } from "../../shared/items/enchants";
+import { collectEnchantHooks, createBinding, EnchantPhase, EnchantPhaseId } from "../../shared/items/enchants";
+import { DamageCoordinatorContextToken, InventoryContextToken, MovementContextToken, PlayerContextToken } from "../../shared/items/enchants/contextTokens";
 import type { ServerDamageContext } from "../combat/damageCoordinator";
 import type { ServerMovementState } from "../movement";
 
@@ -35,11 +36,6 @@ function cloneItem(item: ItemInstance): ItemInstance {
         durability: item.durability,
     };
 }
-
-export const MovementContextToken = createContextToken<ServerMovementState>("server.movementState");
-export const InventoryContextToken = createContextToken<ServerInventoryState>("server.inventoryState");
-export const PlayerContextToken = createContextToken<ServerPlayerState>("server.playerState");
-export const DamageCoordinatorContextToken = createContextToken<ServerDamageCoordinator>("server.damageCoordinator");
 
 function createItemInstance(defId: string, stack = 1): ItemInstance | undefined {
     const def = itemRepository.get(defId);
