@@ -63,6 +63,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
+        enchant: { comboTier: 3 },
     },
     {
         id: "sword",
@@ -89,6 +90,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
+        enchant: { comboTier: 1 },
     },
     {
         id: "rare_sword",
@@ -118,6 +120,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
+        enchant: { comboTier: 2 },
     },
     {
         id: "epic_sword",
@@ -147,6 +150,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
+        enchant: { comboTier: 3 },
     },
     {
         id: "legendary_sword",
@@ -176,6 +180,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: -1,
+        enchant: { comboTier: 3 },
     },
     {
         id: "chair",
@@ -194,6 +199,7 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: 15,
+        enchant: undefined,
     },
     {
         id: "raping_bow",
@@ -216,5 +222,6 @@ export const itemRepository = new ItemRepository([
         maxStack: 1,
         transferable: false,
         durability: 30,
+        enchant: undefined,
     },
 ]);

@@ -1,6 +1,7 @@
 import { HttpService, RunService } from "@rbxts/services";
-import { ItemEffectType, ItemInstance } from "../../shared/items";
+import { ItemEffectType } from "../../shared/items";
 import { itemRepository } from "../../shared/items/repository";
+import type { ItemDef, ItemInstance } from "../../shared/items";
 import { isSlotEquippable } from "../../shared/items/util";
 import { cloneBlockConfig } from "../../shared/items/blockDefaults";
 import {
@@ -19,6 +20,9 @@ import type { PlayerProfile } from "../profiles";
 import type { ServerPlayerState } from "../player";
 import { InventoryState } from "../../shared/inventory";
 import type { ServerDamageCoordinator } from "../combat/damageCoordinator";
+import { collectEnchantHooks, createBinding, EnchantPhase, EnchantPhaseId, createContextToken } from "../../shared/items/enchants";
+import type { ServerDamageContext } from "../combat/damageCoordinator";
+import type { ServerMovementState } from "../movement";
 
 function cloneItem(item: ItemInstance): ItemInstance {
     return {
@@ -31,6 +35,11 @@ function cloneItem(item: ItemInstance): ItemInstance {
         durability: item.durability,
     };
 }
+
+export const MovementContextToken = createContextToken<ServerMovementState>("server.movementState");
+export const InventoryContextToken = createContextToken<ServerInventoryState>("server.inventoryState");
+export const PlayerContextToken = createContextToken<ServerPlayerState>("server.playerState");
+export const DamageCoordinatorContextToken = createContextToken<ServerDamageCoordinator>("server.damageCoordinator");
 
 function createItemInstance(defId: string, stack = 1): ItemInstance | undefined {
     const def = itemRepository.get(defId);
@@ -77,7 +86,7 @@ function isEmptyRecord(record: Record<string, unknown>) {
     for (const _ of pairs(record)) {
         return false;
     }
-    
+
     return true;
 }
 
@@ -372,40 +381,42 @@ export class ServerInventoryState extends InventoryState {
 
         const definition = itemRepository.get(equipped.id);
         const effects = equipped.effects ?? definition?.effects;
-        if (!effects) {
-            return;
-        }
+        if (effects) {
+            for (const effect of effects) {
+                if (effect.type === ItemEffectType.LIFESTEAL) {
+                    const dispose = this.damageCoordinator.postHit.register({
+                        priority: 100,
+                        apply(ctx) {
+                            if (!ctx.applied) {
+                                return ctx;
+                            }
 
-        for (const effect of effects) {
-            if (effect.type === ItemEffectType.LIFESTEAL) {
-                const dispose = this.damageCoordinator.postHit.register({
-                    priority: 100,
-                    apply(ctx) {
-                        if (!ctx.applied) {
+                            if (ctx.attacker !== owner) {
+                                return ctx;
+                            }
+
+                            const humanoid = owner.player.Character?.FindFirstChildOfClass("Humanoid") as Humanoid | undefined;
+                            if (!humanoid) {
+                                return ctx;
+                            }
+
+                            const heal = ctx.finalDamage * effect.amount;
+                            humanoid.Health = math.clamp(humanoid.Health + heal, 0, humanoid.MaxHealth);
+
                             return ctx;
-                        }
+                        },
+                    });
 
-                        if (ctx.attacker !== owner) {
-                            return ctx;
-                        }
-
-                        const humanoid = owner.player.Character?.FindFirstChildOfClass("Humanoid") as Humanoid | undefined;
-                        if (!humanoid) {
-                            return ctx;
-                        }
-
-                        const heal = ctx.finalDamage * effect.amount;
-                        humanoid.Health = math.clamp(humanoid.Health + heal, 0, humanoid.MaxHealth);
-
-                        return ctx;
-                    },
-                });
-
-                this.equippedModifierDisposers.push(dispose);
+                    this.equippedModifierDisposers.push(dispose);
+                }
             }
         }
 
         owner.blockState.onEquippedChanged(equipped);
+
+        if (definition) {
+            this.registerEnchantHooks(definition, equipped);
+        }
     }
 
     private toSnapshot(): InventorySnapshot {
@@ -425,5 +436,44 @@ export class ServerInventoryState extends InventoryState {
             items,
             equippedSlot: this.equippedSlot
         };
+}
+
+    private registerEnchantHooks(definition: ItemDef, instance: ItemInstance) {
+        const owner = this.ownerState;
+        const binding = createBinding(definition, instance, (ctx) => {
+            ctx.set(InventoryContextToken, this);
+            ctx.set(DamageCoordinatorContextToken, this.damageCoordinator);
+            if (owner) {
+                ctx.set(PlayerContextToken, owner);
+                ctx.set(MovementContextToken, owner.movementState);
+            }
+        });
+        const hooks = collectEnchantHooks<ServerDamageContext>(binding);
+        for (const hook of hooks) {
+            const pipeline = this.getPipelineForPhase(hook.phase);
+            const disposePipeline = pipeline.register({
+                priority: hook.priority,
+                apply(context) {
+                    return hook.apply(context);
+                },
+            });
+            this.equippedModifierDisposers.push(() => {
+                disposePipeline();
+                hook.dispose?.();
+            });
+        }
+    }
+
+    private getPipelineForPhase(phase: EnchantPhaseId) {
+        switch (phase) {
+            case EnchantPhase.Attacker:
+                return this.damageCoordinator.attacker;
+            case EnchantPhase.Defender:
+                return this.damageCoordinator.defender;
+            case EnchantPhase.PostHit:
+                return this.damageCoordinator.postHit;
+            default:
+                return this.damageCoordinator.attacker;
+        }
     }
 }

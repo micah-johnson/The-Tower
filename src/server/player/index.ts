@@ -47,7 +47,7 @@ export class ServerPlayerState extends PlayerState<ServerCombatState, ServerInve
     dispose() {
         this.combatState.dispose?.()
         this.inventoryState.dispose()
-        this.blockState.endBlock()
+        // this.blockState.endBlock()
         this.movementState.detachHumanoid()
         super.dispose()
     }

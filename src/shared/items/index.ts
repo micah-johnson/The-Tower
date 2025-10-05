@@ -131,6 +131,17 @@ export type ItemEffect = LifeStealEffect;
 export const tItemEffect = t.union(tLifeStealEffect);
 
 // Item Definition
+// Discriminated union at runtime: (type === X) ⇒ (subtype ∈ SubTypeFor<X>)
+const tComboTier = t.union(t.literal(1), t.literal(2), t.literal(3));
+
+export interface ItemEnchantConfig {
+	comboTier?: 1 | 2 | 3;
+}
+
+const tItemEnchantConfig = t.interface({
+	comboTier: t.optional(tComboTier),
+});
+
 // Common item fields (without type/subtype so we can intersect in discriminated union)
 const tItemCommon = t.interface({
   id: t.string,
@@ -143,9 +154,9 @@ const tItemCommon = t.interface({
   durability: t.number,
   effects: t.optional(t.array(tItemEffect)),
   block: t.optional(tBlockConfig),
+  enchant: t.optional(tItemEnchantConfig),
 });
 
-// Discriminated union at runtime: (type === X) ⇒ (subtype ∈ SubTypeFor<X>)
 export const tItemDef = t.union(
   t.intersection(
     tItemCommon,

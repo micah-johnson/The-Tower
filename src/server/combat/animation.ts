@@ -6,9 +6,10 @@ export function playAnimation(props: {
     item: ItemDef, 
     action: AnimationAction, 
     index: number, 
-    targetLength?: number, 
+    targetLength?: number,
+    freeze?: boolean, // Freeze animation at last frame
     reverse?: boolean
-}) {
+}): AnimationTrack | undefined {
     const humanoid = props.player?.Character?.FindFirstChild("Humanoid") as Humanoid | undefined
 
     if (!humanoid) return
@@ -21,10 +22,11 @@ export function playAnimation(props: {
     }
 
     const animationId = getAnimations(props.item, props.action)?.[props.index]
-
-    print(animationId)
     
     if (!animationId) return
+
+    const existingTrack = getAnimationTrack(props.player, animationId)
+    existingTrack?.Stop()
 
     const animation = new Instance("Animation");
 	animation.AnimationId = animationId;
@@ -45,6 +47,33 @@ export function playAnimation(props: {
     track.Priority = Enum.AnimationPriority.Action
     
     if (props.reverse) track.TimePosition = track.Length
+
+    if (props.freeze) {
+        track.GetMarkerReachedSignal("Freeze").Connect(() => {
+            track.AdjustSpeed(0)
+            // track.AdjustWeight(1, 0)
+        })
+    }
+
+    print(track.TimePosition, ratio)
     
     track.Play(0, undefined, props.reverse ? -ratio : ratio)
+
+    return track
+}
+
+export function getAnimationTrack(player: Player, animationId: string): AnimationTrack | undefined {
+    const humanoid = player?.Character?.FindFirstChild("Humanoid") as Humanoid | undefined
+
+    if (!humanoid) return
+
+    let animator = humanoid.FindFirstChild("Animator") as Animator | undefined
+
+    if (!animator) return
+
+    const tracks = animator.GetPlayingAnimationTracks()
+
+    for (const track of tracks) {
+        if (track.Animation?.AnimationId === animationId) return track
+    }
 }

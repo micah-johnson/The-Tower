@@ -7,6 +7,7 @@ import { ServerDamageCoordinator } from "./damageCoordinator";
 import { playAnimation } from "./animation";
 import { AnimationAction } from "../../shared/consts/animations";
 import { itemRepository } from "../../shared/items/repository";
+import { t } from "@rbxts/t";
 
 export class CombatHandler {
     constructor(
@@ -26,40 +27,49 @@ export class CombatHandler {
 
             const ownerState = this.playerRepository.getByPlayer(owner)
 
-            const touchHandler = handle.Touched.Connect(other => {
+            if (!ownerState) return;
+
+            const activationHandler = tool.Activated.Connect(() => this.handleActivation(handle, ownerState))
+
+            tool.Unequipped.Once(() => activationHandler.Disconnect())
+        })
+    }
+
+    handleActivation(handle: Part, player: ServerPlayerState) {
+        if (!this.canSwing(player)) return;
+
+        player.combatState.setLastSwing(DateTime.now().UnixTimestampMillis);
+
+        const track = playAnimation({
+            player: player.player,
+            item: itemRepository.get(player.inventoryState.getEquippedItem()!.id)!,
+            action: AnimationAction.LMB,
+            index: 0,
+            targetLength: player.getAttributeValue(Attribute.ATTACK_SPEED)
+        });
+
+        if (!track) return;
+
+        const startWindow = DateTime.now().UnixTimestampMillis + track.GetTimeOfKeyframe("DamageStart") * track.Speed * 1000
+        const endWindow = DateTime.now().UnixTimestampMillis + track.GetTimeOfKeyframe("DamageEnd") * track.Speed * 1000
+
+        const listener = handle.Touched.Connect(other => {
+            if (DateTime.now().UnixTimestampMillis > startWindow && DateTime.now().UnixTimestampMillis < endWindow) {
                 const victim = getPlayerFromChild(other)
 
                 if (!victim) return;
 
                 const victimState = this.playerRepository.getByPlayer(victim)
 
-                if (!ownerState || !victimState) return;
+                if (!player || !victimState) return;
 
-                this.handleTouch(ownerState, victimState)
-            })
-
-            const activationHandler = tool.Activated.Connect(() => {
-                if (ownerState) this.handleSwing(ownerState)
-            })
-
-            tool.Unequipped.Once(() => {
-                touchHandler.Disconnect()
-                activationHandler.Disconnect()
-            })
+                this.handleTouch(player, victimState)
+            }
         })
-    }
 
-    handleSwing(player: ServerPlayerState) {
-        if (this.canSwing(player)) {
-            player.combatState.setLastSwing(DateTime.now().UnixTimestampMillis);
-            playAnimation({
-                player: player.player,
-                item: itemRepository.get(player.inventoryState.getEquippedItem()!.id)!,
-                action: AnimationAction.LMB,
-                index: 0,
-                targetLength: player.getAttributeValue(Attribute.ATTACK_SPEED)
-            });
-        }
+        track.Ended.Connect(() => {
+            listener.Disconnect()
+        })
     }
 
     isSwinging(player: ServerPlayerState) {
@@ -108,8 +118,8 @@ export class CombatHandler {
         const attackerRoot = attacker.Character?.FindFirstChild("HumanoidRootPart") as BasePart | undefined;
         if (!victimRoot || !attackerRoot) return;
 
-        const horizontal = opts?.horizontal ?? 3000; // how hard to push back
-        const vertical = opts?.vertical ?? 10;     // upward lift
+        const horizontal = opts?.horizontal ?? 0.1; // how hard to push back
+        const vertical = opts?.vertical ?? 1;     // upward lift
         const duration = opts?.duration ?? 0.1;   // seconds to keep the push
 
         // Direction from attacker -> victim (fallback to attacker's facing if overlapping)

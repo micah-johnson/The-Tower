@@ -1,10 +1,12 @@
-import { BlockConfig, BlockOutcome, BlockReaction, BlockReactionType, ItemInstance } from "../../shared/items";
+import { Attribute, BlockConfig, BlockOutcome, BlockReaction, BlockReactionType, ItemInstance } from "../../shared/items";
 import { itemRepository } from "../../shared/items/repository";
 import { cloneBlockConfig, getDefaultBlockConfig } from "../../shared/items/blockDefaults";
 import { ServerInventoryState } from "../inventory";
 import { ServerDamageCoordinator } from "./damageCoordinator";
 import type { ServerDamageContext } from "./damageCoordinator";
 import type { ServerPlayerState } from "../player";
+import { playAnimation } from "./animation";
+import { AnimationAction } from "../../shared/consts/animations";
 
 const DEFAULT_BLOCK_PRIORITY = 50;
 
@@ -43,7 +45,18 @@ export class ServerBlockState {
             return { ok: false, reason: "Item disabled" };
         }
 
-        this.endBlock();
+        if (DateTime.now().UnixTimestampMillis - this.owner.combatState.getLastSwing() < this.owner.getAttributeValue(Attribute.ATTACK_SPEED)) {
+            return { ok: false, reason: "Player is swinging" };
+        }
+
+        playAnimation({
+            player: this.owner.player,
+            item: itemRepository.get(this.owner.inventoryState.getEquippedItem()!.id)!,
+            action: AnimationAction.RMB,
+            index: 0,
+            targetLength: 200,
+            freeze: true
+        });
 
         this.isBlocking = true;
         this.blockStart = DateTime.now().UnixTimestampMillis;
@@ -84,6 +97,17 @@ export class ServerBlockState {
     }
 
     endBlock() {
+        if (!this.owner.inventoryState.getEquippedItem()) return
+        
+        playAnimation({
+            player: this.owner.player,
+            item: itemRepository.get(this.owner.inventoryState.getEquippedItem()!.id)!,
+            action: AnimationAction.RMB,
+            index: 0,
+            targetLength: 200,
+            reverse: true
+        });
+
         const wasBlocking = this.isBlocking;
 
         if (this.modifierDisposer) {

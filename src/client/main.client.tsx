@@ -2,6 +2,7 @@ import React from "@rbxts/react";
 import { createRoot } from "@rbxts/react-roblox";
 import { Players, RunService, StarterGui } from "@rbxts/services";
 import "./network/handlers";
+import "../shared/items/enchants/register";
 import App from "./ui/App";
 import { setupKeybinds } from "./keybinds";
 

@@ -1,5 +1,6 @@
 import { Players, Workspace } from "@rbxts/services";
 import "./network/handlers";
+import "../shared/items/enchants/register";
 import "./profiles";
 import { toolRegistry } from "./tools";
 import { playerRepository } from "./container";
