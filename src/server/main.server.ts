@@ -19,20 +19,29 @@ playerRepository.Added.Connect(playerState => {
 	})
 })
 
+// Disable default health bar (above player head)
+Players.PlayerAdded.Connect(player => {
+	player.CharacterAdded.Connect(char => {
+		const humanoid = char.WaitForChild("Humanoid") as Humanoid
+
+		humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	})
+})
+
 function syncHumanoid(playerState: ServerPlayerState) {
 	print(playerState.getAttributeValue(Attribute.HEALTH))
 
-		const humanoid = playerState.player.Character?.FindFirstChild("Humanoid") as Humanoid | undefined
+	const humanoid = playerState.player.Character?.FindFirstChild("Humanoid") as Humanoid | undefined
 
-		if (!humanoid) return;
+	if (!humanoid) return;
 
-		const health = playerState.getAttributeValue(Attribute.HEALTH)
-		const speed = playerState.getAttributeValue(Attribute.SPEED)
+	const health = playerState.getAttributeValue(Attribute.HEALTH)
+	const speed = playerState.getAttributeValue(Attribute.SPEED)
 
-		humanoid.MaxHealth = health
-		humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
-		playerState.movementState.attachHumanoid(humanoid)
-		playerState.movementState.setBaseSpeed(speed)
+	humanoid.MaxHealth = health
+	humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
+	playerState.movementState.attachHumanoid(humanoid)
+	playerState.movementState.setBaseSpeed(speed)
 }
 
 Workspace.ChildAdded.Connect(child => {
